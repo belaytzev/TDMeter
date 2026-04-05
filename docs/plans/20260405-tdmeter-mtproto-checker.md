@@ -91,12 +91,12 @@
 - Modify: `checker/tcp.go`
 - Create: `checker/tcp_test.go`
 
-- [ ] Define `TCPChecker` struct with `timeout` field
-- [ ] Implement `Check(ctx context.Context, server string, port int) (reachable bool, duration time.Duration, err error)`
-- [ ] TCP dial with context timeout, measure round-trip time
-- [ ] Write tests using a local TCP listener — success case (listener accepts)
-- [ ] Write tests for failure cases — connection refused (no listener), timeout (use short timeout)
-- [ ] Run tests: `go test ./checker/...`
+- [x] Define `TCPChecker` struct with `timeout` field
+- [x] Implement `Check(ctx context.Context, server string, port int) (reachable bool, duration time.Duration, err error)`
+- [x] TCP dial with context timeout, measure round-trip time
+- [x] Write tests using a local TCP listener — success case (listener accepts)
+- [x] Write tests for failure cases — connection refused (no listener), timeout (use short timeout)
+- [x] Run tests: `go test ./checker/...`
 
 ### Task 5: TDLib proxy checker
 
