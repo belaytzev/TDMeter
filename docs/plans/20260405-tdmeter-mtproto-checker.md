@@ -125,18 +125,18 @@
 - Modify: `metrics/metrics.go`
 - Create: `metrics/metrics_test.go`
 
-- [ ] Define `Metrics` struct with Prometheus gauge vectors
-- [ ] Register gauges (labels: name, server, port):
+- [x] Define `Metrics` struct with Prometheus gauge vectors
+- [x] Register gauges (labels: name, server, port):
   - `tdmeter_proxy_up` — 1 if online, 0 otherwise
   - `tdmeter_proxy_degraded` — 1 if degraded (TCP ok, TDLib fail), 0 otherwise
   - `tdmeter_proxy_latency_ms` — RTT in ms, -1 if unreachable
   - `tdmeter_check_duration_seconds` — total check round time (no labels)
   - `tdmeter_proxies_total` — count by status label (online/degraded/offline)
-- [ ] Implement `Update(results []checker.Result, duration time.Duration)` — sets all gauges from check results
-- [ ] Implement `Handler() http.Handler` — returns `promhttp.Handler()`
-- [ ] Write tests: verify gauge values after Update with known results (online, degraded, offline mix)
-- [ ] Write tests: verify label correctness and metric count
-- [ ] Run tests: `go test ./metrics/...`
+- [x] Implement `Update(results []checker.Result, duration time.Duration)` — sets all gauges from check results
+- [x] Implement `Handler() http.Handler` — returns `promhttp.Handler()`
+- [x] Write tests: verify gauge values after Update with known results (online, degraded, offline mix)
+- [x] Write tests: verify label correctness and metric count
+- [x] Run tests: `go test ./metrics/...`
 
 ### Task 7: Scheduler and check orchestration
 
