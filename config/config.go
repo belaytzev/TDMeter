@@ -14,6 +14,7 @@ type Config struct {
 	TDLib       TDLibConfig   `yaml:"tdlib"`
 	Proxies     []ProxyConfig `yaml:"proxies"`
 	Metrics     MetricsConfig `yaml:"metrics"`
+	Web         WebConfig     `yaml:"web"`
 	Concurrency int           `yaml:"concurrency"`
 
 	CheckInterval time.Duration `yaml:"check_interval"`
@@ -29,6 +30,15 @@ type TDLibConfig struct {
 
 type MetricsConfig struct {
 	Listen string `yaml:"listen"`
+}
+
+type WebConfig struct {
+	Auth AuthConfig `yaml:"auth"`
+}
+
+type AuthConfig struct {
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 type ProxyConfig struct {
@@ -93,6 +103,12 @@ func applyEnvOverrides(cfg *Config) error {
 	if v := os.Getenv("TDMETER_API_HASH"); v != "" {
 		cfg.TDLib.APIHash = v
 	}
+	if v := os.Getenv("TDMETER_AUTH_USERNAME"); v != "" {
+		cfg.Web.Auth.Username = v
+	}
+	if v := os.Getenv("TDMETER_AUTH_PASSWORD"); v != "" {
+		cfg.Web.Auth.Password = v
+	}
 	return nil
 }
 
@@ -118,6 +134,10 @@ func validate(cfg *Config) error {
 	}
 	if cfg.Concurrency < 1 {
 		return fmt.Errorf("concurrency must be at least 1, got %d", cfg.Concurrency)
+	}
+
+	if (cfg.Web.Auth.Username == "") != (cfg.Web.Auth.Password == "") {
+		return fmt.Errorf("web.auth: both username and password must be set, or neither")
 	}
 
 	for i, p := range cfg.Proxies {

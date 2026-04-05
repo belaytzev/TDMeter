@@ -345,6 +345,51 @@ func TestValidateSecret_InvalidSecrets(t *testing.T) {
 	}
 }
 
+func TestValidation_AuthPartial(t *testing.T) {
+	tests := []struct {
+		name    string
+		auth    string
+		wantErr bool
+	}{
+		{"both_set", "web:\n  auth:\n    username: admin\n    password: secret", false},
+		{"neither_set", "", false},
+		{"only_username", "web:\n  auth:\n    username: admin", true},
+		{"only_password", "web:\n  auth:\n    password: secret", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			content := validConfig + "\n" + tt.auth
+			path := writeConfig(t, content)
+			_, err := Load(path)
+			if tt.wantErr && err == nil {
+				t.Fatal("expected error for partial auth config")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestLoad_AuthFromEnv(t *testing.T) {
+	path := writeConfig(t, validConfig)
+
+	t.Setenv("TDMETER_AUTH_USERNAME", "envuser")
+	t.Setenv("TDMETER_AUTH_PASSWORD", "envpass")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Web.Auth.Username != "envuser" {
+		t.Fatalf("expected username 'envuser', got %q", cfg.Web.Auth.Username)
+	}
+	if cfg.Web.Auth.Password != "envpass" {
+		t.Fatalf("expected password 'envpass', got %q", cfg.Web.Auth.Password)
+	}
+}
+
 func itoa(i int) string {
 	return fmt.Sprintf("%d", i)
 }

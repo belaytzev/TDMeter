@@ -14,6 +14,7 @@ import (
 	"github.com/belaytzev/tdmeter/config"
 	"github.com/belaytzev/tdmeter/metrics"
 	"github.com/belaytzev/tdmeter/scheduler"
+	"github.com/belaytzev/tdmeter/web"
 )
 
 func main() {
@@ -47,11 +48,24 @@ func main() {
 	}
 
 	m := metrics.New()
+	store := web.NewStatusStore()
 
-	sched := scheduler.New(cfg.Proxies, tcpChecker, tdlibChecker, m, cfg.Concurrency, cfg.CheckInterval)
+	sched := scheduler.New(cfg.Proxies, tcpChecker, tdlibChecker, m, store, cfg.Concurrency, cfg.CheckInterval)
+
+	// Helper to optionally wrap handlers with basic auth
+	protect := func(h http.Handler) http.Handler {
+		if cfg.Web.Auth.Username != "" {
+			return web.BasicAuth(cfg.Web.Auth.Username, cfg.Web.Auth.Password, h)
+		}
+		return h
+	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/metrics", m.Handler())
+	mux.Handle("/", protect(web.DashboardHandler(cfg.CheckInterval)))
+	mux.Handle("/logo.png", web.LogoHandler())
+	mux.Handle("/api/status", protect(web.APIStatusHandler(store)))
+	mux.Handle("/health/", protect(web.HealthHandler(store)))
+	mux.Handle("/metrics", m.Handler()) // unprotected for Prometheus
 
 	srv := &http.Server{
 		Addr:              cfg.Metrics.Listen,

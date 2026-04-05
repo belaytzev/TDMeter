@@ -11,6 +11,7 @@ import (
 	"github.com/belaytzev/tdmeter/checker"
 	"github.com/belaytzev/tdmeter/config"
 	"github.com/belaytzev/tdmeter/metrics"
+	"github.com/belaytzev/tdmeter/web"
 )
 
 // Scheduler orchestrates periodic proxy health checks with bounded concurrency.
@@ -19,6 +20,7 @@ type Scheduler struct {
 	tcp         *checker.TCPChecker
 	tdlib       checker.Checker
 	metrics     *metrics.Metrics
+	store       *web.StatusStore
 	concurrency int
 	interval    time.Duration
 	stopCh      chan struct{}
@@ -34,6 +36,7 @@ func New(
 	tcp *checker.TCPChecker,
 	tdlib checker.Checker,
 	m *metrics.Metrics,
+	store *web.StatusStore,
 	concurrency int,
 	interval time.Duration,
 ) *Scheduler {
@@ -42,6 +45,7 @@ func New(
 		tcp:         tcp,
 		tdlib:       tdlib,
 		metrics:     m,
+		store:       store,
 		concurrency: concurrency,
 		interval:    interval,
 		stopCh:      make(chan struct{}),
@@ -145,6 +149,7 @@ func (s *Scheduler) runAndUpdate(ctx context.Context) {
 	duration := time.Since(start)
 
 	s.metrics.Update(results, duration)
+	s.store.Update(results)
 
 	online, degraded, offline := 0, 0, 0
 	for _, r := range results {

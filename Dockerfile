@@ -27,7 +27,17 @@ RUN cd /td && \
           -DTD_ENABLE_DOTNET=OFF \
           .. && \
     cmake --build . --target tdjson_static -j "$(nproc)" && \
-    cmake --install .
+    find . -name '*.a' -exec cp {} /usr/local/lib/ \; && \
+    cd /td && \
+    find td -name '*.h' -o -name '*.hpp' | while read f; do \
+      mkdir -p "/usr/local/include/$(dirname "$f")"; \
+      cp "$f" "/usr/local/include/$f"; \
+    done && \
+    find build/td -name '*.h' -o -name '*.hpp' | while read f; do \
+      dest="/usr/local/include/${f#build/}"; \
+      mkdir -p "$(dirname "$dest")"; \
+      cp "$f" "$dest"; \
+    done
 
 # Stage 2: Build Go binary
 FROM golang:1.24-alpine AS builder
@@ -41,7 +51,7 @@ RUN apk add --no-cache \
 
 # Copy TDLib headers and libraries from builder
 COPY --from=tdlib-builder /usr/local/include/td /usr/local/include/td
-COPY --from=tdlib-builder /usr/local/lib/libtd* /usr/local/lib/
+COPY --from=tdlib-builder /usr/local/lib/*.a /usr/local/lib/
 
 WORKDIR /src
 

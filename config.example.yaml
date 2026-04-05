@@ -23,6 +23,12 @@ proxies:
 metrics:
   listen: ":2112"  # default: :2112
 
+# Web dashboard settings (optional)
+web:
+  auth:
+    username: ""   # Basic auth username (leave empty to disable auth)
+    password: ""   # Basic auth password (both must be set, or neither)
+
 # Check settings
 check_interval: 60s   # How often to check proxies (default: 60s)
 tcp_timeout: 5s        # TCP connection timeout (default: 5s)
@@ -30,5 +36,7 @@ tdlib_timeout: 10s     # TDLib proxy test timeout (default: 10s)
 concurrency: 5         # Max concurrent proxy checks (default: 5)
 
 # Environment variable overrides (take precedence over yaml values):
-#   TDMETER_API_ID    - overrides tdlib.api_id
-#   TDMETER_API_HASH  - overrides tdlib.api_hash
+#   TDMETER_API_ID         - overrides tdlib.api_id
+#   TDMETER_API_HASH       - overrides tdlib.api_hash
+#   TDMETER_AUTH_USERNAME  - overrides web.auth.username
+#   TDMETER_AUTH_PASSWORD  - overrides web.auth.password

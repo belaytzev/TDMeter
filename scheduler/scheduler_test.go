@@ -12,6 +12,7 @@ import (
 	"github.com/belaytzev/tdmeter/checker"
 	"github.com/belaytzev/tdmeter/config"
 	"github.com/belaytzev/tdmeter/metrics"
+	"github.com/belaytzev/tdmeter/web"
 )
 
 // mockChecker implements checker.Checker for testing.
@@ -97,7 +98,7 @@ func TestRunCheckRound_AllOffline(t *testing.T) {
 	mock := &mockChecker{latency: 42.0}
 	m := metrics.New()
 
-	s := New(nil, tcp, mock, m, 2, time.Minute)
+	s := New(nil, tcp, mock, m, web.NewStatusStore(), 2, time.Minute)
 	proxies := testProxies(3)
 
 	results := s.RunCheckRound(context.Background(), proxies)
@@ -126,7 +127,7 @@ func TestRunCheckRound_Degraded(t *testing.T) {
 	mock := &mockChecker{err: fmt.Errorf("tdlib timeout")}
 	m := metrics.New()
 
-	s := New(nil, tcp, mock, m, 2, time.Minute)
+	s := New(nil, tcp, mock, m, web.NewStatusStore(), 2, time.Minute)
 
 	proxies := make([]config.ProxyConfig, len(lns))
 	for i, ln := range lns {
@@ -156,7 +157,7 @@ func TestRunCheckRound_Online(t *testing.T) {
 	mock := &mockChecker{latency: 55.5}
 	m := metrics.New()
 
-	s := New(nil, tcp, mock, m, 5, time.Minute)
+	s := New(nil, tcp, mock, m, web.NewStatusStore(), 5, time.Minute)
 
 	proxies := make([]config.ProxyConfig, len(lns))
 	for i, ln := range lns {
@@ -180,7 +181,7 @@ func TestRunCheckRound_Concurrency(t *testing.T) {
 	mock := &mockChecker{}
 	m := metrics.New()
 
-	s := New(nil, tcp, mock, m, 2, time.Minute)
+	s := New(nil, tcp, mock, m, web.NewStatusStore(), 2, time.Minute)
 	proxies := testProxies(5)
 
 	results := s.RunCheckRound(context.Background(), proxies)
@@ -211,7 +212,7 @@ func TestRunCheckRound_MixedStatus(t *testing.T) {
 	m := metrics.New()
 
 	// concurrency=1 to ensure deterministic ordering
-	s := New(nil, tcp, tdlib, m, 1, time.Minute)
+	s := New(nil, tcp, tdlib, m, web.NewStatusStore(), 1, time.Minute)
 
 	proxies := []config.ProxyConfig{
 		listenerProxy(t, lns[0], "online"),
@@ -241,7 +242,7 @@ func TestStartAndStop(t *testing.T) {
 	m := metrics.New()
 
 	proxies := testProxies(1)
-	s := New(proxies, tcp, mock, m, 1, 50*time.Millisecond)
+	s := New(proxies, tcp, mock, m, web.NewStatusStore(), 1, 50*time.Millisecond)
 
 	ctx := context.Background()
 	s.Start(ctx)
