@@ -26,6 +26,7 @@ go.work.sum
 
 # env file
 .env
+.envrc
 
 # Go binary
 tdmeter
@@ -36,6 +37,16 @@ tdmeter
 # User config (may contain secrets)
 config.yaml
 
+# OS files
+.DS_Store
+Thumbs.db
+
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Claude Code
+.claude/
