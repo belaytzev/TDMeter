@@ -79,11 +79,11 @@
 - Modify: `checker/checker.go`
 - Create: `checker/checker_test.go`
 
-- [ ] Define `Status` type as string constants: `StatusOnline`, `StatusDegraded`, `StatusOffline`
-- [ ] Define `Result` struct: `Name, Server, Port string; Status Status; LatencyMs float64; CheckedAt time.Time`
-- [ ] Implement `DetermineStatus(tcpOk bool, tdlibOk bool) Status` — explicit testable function for status logic
-- [ ] Write tests for DetermineStatus — all combinations: (true,true)=online, (true,false)=degraded, (false,false)=offline, (false,true)=offline
-- [ ] Run tests: `go test ./checker/...`
+- [x] Define `Status` type as string constants: `StatusOnline`, `StatusDegraded`, `StatusOffline`
+- [x] Define `Result` struct: `Name, Server, Port string; Status Status; LatencyMs float64; CheckedAt time.Time`
+- [x] Implement `DetermineStatus(tcpOk bool, tdlibOk bool) Status` — explicit testable function for status logic
+- [x] Write tests for DetermineStatus — all combinations: (true,true)=online, (true,false)=degraded, (false,false)=offline, (false,true)=offline
+- [x] Run tests: `go test ./checker/...`
 
 ### Task 4: TCP quick-check
 
