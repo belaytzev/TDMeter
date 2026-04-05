@@ -187,12 +187,12 @@
 
 ### Task 10: Verify acceptance criteria
 
-- [ ] Verify two-stage check works: TCP quick-check → TDLib testProxy
-- [ ] Verify Prometheus metrics exposed correctly on `:2112/metrics`
-- [ ] Verify config loading with validation and defaults
-- [ ] Verify bounded concurrency (not spawning unlimited goroutines)
-- [ ] Verify graceful shutdown on SIGTERM
-- [ ] Run full test suite: `go test ./...`
+- [x] Verify two-stage check works: TCP quick-check → TDLib testProxy
+- [x] Verify Prometheus metrics exposed correctly on `:2112/metrics`
+- [x] Verify config loading with validation and defaults
+- [x] Verify bounded concurrency (not spawning unlimited goroutines)
+- [x] Verify graceful shutdown on SIGTERM
+- [x] Run full test suite: `go test ./...`
 
 ### Task 11: Write README and finalize documentation
 
