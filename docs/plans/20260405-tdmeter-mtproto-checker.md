@@ -160,15 +160,15 @@
 **Files:**
 - Modify: `main.go`
 
-- [ ] Parse `--config` flag (default: `config.yaml`)
-- [ ] Load config via `config.Load()`
-- [ ] Initialize TCPChecker, TDLibChecker (with configurable database path, default `/tmp/tdmeter-tdlib/`), Metrics, Scheduler
-- [ ] Start HTTP server for metrics endpoint on configured listen address
-- [ ] Start scheduler
-- [ ] Handle OS signals (SIGINT, SIGTERM) for graceful shutdown — stop scheduler, close TDLib, stop HTTP server
-- [ ] Add structured logging (Go `slog` package) for startup, check results, errors
-- [ ] Run full test suite: `go test ./...`
-- [ ] Manual test: run with example config, verify `/metrics` endpoint responds
+- [x] Parse `--config` flag (default: `config.yaml`)
+- [x] Load config via `config.Load()`
+- [x] Initialize TCPChecker, TDLibChecker (with configurable database path, default `/tmp/tdmeter-tdlib/`), Metrics, Scheduler
+- [x] Start HTTP server for metrics endpoint on configured listen address
+- [x] Start scheduler
+- [x] Handle OS signals (SIGINT, SIGTERM) for graceful shutdown — stop scheduler, close TDLib, stop HTTP server
+- [x] Add structured logging (Go `slog` package) for startup, check results, errors
+- [x] Run full test suite: `go test ./...`
+- [x] Manual test: run with example config, verify `/metrics` endpoint responds
 
 ### Task 9: Dockerfile and docker-compose
 
