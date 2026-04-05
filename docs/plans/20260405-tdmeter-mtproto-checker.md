@@ -62,16 +62,16 @@
 - Create: `config/config_test.go`
 - Create: `config.example.yaml`
 
-- [ ] Define config structs: `Config` (top-level, includes `Concurrency int`), `MetricsConfig`, `TDLibConfig`, `ProxyConfig`
-- [ ] Implement `Load(path string) (*Config, error)` — reads and parses YAML
-- [ ] Support env var overrides for sensitive fields: `TDMETER_API_ID`, `TDMETER_API_HASH` (override yaml values if set)
-- [ ] Add validation: required fields (api_id, api_hash, at least 1 proxy), valid port ranges (1-65535), non-empty secret
-- [ ] Handle MTProto secret prefixes: validate hex format, normalize `ee`/`dd` prefixed secrets (strip or pass through as TDLib expects)
-- [ ] Add defaults: `check_interval: 60s`, `tcp_timeout: 5s`, `tdlib_timeout: 10s`, `concurrency: 5`, `listen: :2112`
-- [ ] Create `config.example.yaml` with documented fields
-- [ ] Write tests for Load — valid config, missing required fields, defaults applied, env var overrides
-- [ ] Write tests for validation — invalid port, empty proxies, missing api credentials, invalid secret format
-- [ ] Run tests: `go test ./config/...`
+- [x] Define config structs: `Config` (top-level, includes `Concurrency int`), `MetricsConfig`, `TDLibConfig`, `ProxyConfig`
+- [x] Implement `Load(path string) (*Config, error)` — reads and parses YAML
+- [x] Support env var overrides for sensitive fields: `TDMETER_API_ID`, `TDMETER_API_HASH` (override yaml values if set)
+- [x] Add validation: required fields (api_id, api_hash, at least 1 proxy), valid port ranges (1-65535), non-empty secret
+- [x] Handle MTProto secret prefixes: validate hex format, normalize `ee`/`dd` prefixed secrets (strip or pass through as TDLib expects)
+- [x] Add defaults: `check_interval: 60s`, `tcp_timeout: 5s`, `tdlib_timeout: 10s`, `concurrency: 5`, `listen: :2112`
+- [x] Create `config.example.yaml` with documented fields
+- [x] Write tests for Load — valid config, missing required fields, defaults applied, env var overrides
+- [x] Write tests for validation — invalid port, empty proxies, missing api credentials, invalid secret format
+- [x] Run tests: `go test ./config/...`
 
 ### Task 3: Domain types and status logic
 

@@ -1,0 +1,34 @@
+# TDMeter Configuration
+# Copy this file to config.yaml and adjust values
+
+# TDLib settings (required)
+tdlib:
+  api_id: 12345          # Telegram API ID (get from https://my.telegram.org)
+  api_hash: "your_api_hash_here"  # Telegram API Hash
+  db_path: "/tmp/tdmeter-tdlib/"  # TDLib database directory (default: /tmp/tdmeter-tdlib/)
+
+# MTProto proxies to monitor (at least one required)
+proxies:
+  - name: "proxy-eu-1"
+    server: "proxy1.example.com"
+    port: 443
+    secret: "ee0123456789abcdef0123456789abcdef"  # Hex-encoded secret (ee=fake-TLS, dd=padded)
+
+  - name: "proxy-us-1"
+    server: "proxy2.example.com"
+    port: 8443
+    secret: "dd0123456789abcdef0123456789abcdef"
+
+# Prometheus metrics endpoint
+metrics:
+  listen: ":2112"  # default: :2112
+
+# Check settings
+check_interval: 60s   # How often to check proxies (default: 60s)
+tcp_timeout: 5s        # TCP connection timeout (default: 5s)
+tdlib_timeout: 10s     # TDLib proxy test timeout (default: 10s)
+concurrency: 5         # Max concurrent proxy checks (default: 5)
+
+# Environment variable overrides (take precedence over yaml values):
+#   TDMETER_API_ID    - overrides tdlib.api_id
+#   TDMETER_API_HASH  - overrides tdlib.api_hash
