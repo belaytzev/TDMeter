@@ -144,16 +144,16 @@
 - Modify: `scheduler/scheduler.go`
 - Create: `scheduler/scheduler_test.go`
 
-- [ ] Define `Scheduler` struct with config, TCPChecker, TDLibChecker (via Checker interface), Metrics, and concurrency pool size
-- [ ] Implement `RunCheckRound(ctx context.Context, proxies []config.ProxyConfig) []checker.Result`:
+- [x] Define `Scheduler` struct with config, TCPChecker, TDLibChecker (via Checker interface), Metrics, and concurrency pool size
+- [x] Implement `RunCheckRound(ctx context.Context, proxies []config.ProxyConfig) []checker.Result`:
   - Fan-out via worker pool (channel + goroutines bounded by concurrency)
   - Each worker: TCP check → if ok → TDLib check → `DetermineStatus()` → build Result
   - Collect results
-- [ ] Implement `Start(ctx context.Context)` — sets up gocron job at check_interval, calls RunCheckRound + Metrics.Update each round
-- [ ] Implement `Stop()` for graceful shutdown
-- [ ] Write tests for RunCheckRound with mock checkers — verify concurrency (multiple proxies checked), result aggregation
-- [ ] Write tests for end-to-end status mapping through RunCheckRound
-- [ ] Run tests: `go test ./scheduler/...`
+- [x] Implement `Start(ctx context.Context)` — sets up gocron job at check_interval, calls RunCheckRound + Metrics.Update each round
+- [x] Implement `Stop()` for graceful shutdown
+- [x] Write tests for RunCheckRound with mock checkers — verify concurrency (multiple proxies checked), result aggregation
+- [x] Write tests for end-to-end status mapping through RunCheckRound
+- [x] Run tests: `go test ./scheduler/...`
 
 ### Task 8: Wire everything in main.go
 
