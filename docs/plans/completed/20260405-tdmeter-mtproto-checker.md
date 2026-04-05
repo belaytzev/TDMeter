@@ -196,10 +196,10 @@
 
 ### Task 11: Write README and finalize documentation
 
-- [ ] Create README.md with usage, config reference, Docker instructions
-- [ ] Ensure `config.example.yaml` is complete and documented
-- [ ] Update `.gitignore` for Go artifacts and TDLib state dir (`/tmp/tdmeter-tdlib/`)
-- [ ] Move this plan to `docs/plans/completed/`
+- [x] Create README.md with usage, config reference, Docker instructions
+- [x] Ensure `config.example.yaml` is complete and documented
+- [x] Update `.gitignore` for Go artifacts and TDLib state dir (`/tmp/tdmeter-tdlib/`)
+- [x] Move this plan to `docs/plans/completed/`
 
 ## Technical Details
 

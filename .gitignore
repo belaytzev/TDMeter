@@ -27,6 +27,15 @@ go.work.sum
 # env file
 .env
 
+# Go binary
+tdmeter
+
+# TDLib state directory
+/tmp/tdmeter-tdlib/
+
+# User config (may contain secrets)
+config.yaml
+
 # Editor/IDE
 # .idea/
 # .vscode/
