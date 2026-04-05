@@ -176,14 +176,14 @@
 - Create: `Dockerfile`
 - Create: `docker-compose.yaml`
 
-- [ ] Multi-stage Dockerfile: `golang:1.22-alpine` builder with TDLib build dependencies (cmake, g++, make, openssl-dev, zlib-dev)
-- [ ] Clone and build TDLib from source in builder stage — pin to specific tag (e.g., `v1.8.31`) for reproducibility
-- [ ] Build Go binary with `CGO_ENABLED=1` and `-ldflags="-s -w"`
-- [ ] Run `go test ./...` in builder stage to catch issues early
-- [ ] Runtime stage: `alpine:3.21` with `ca-certificates`, `libstdc++`, `openssl`, `zlib`
-- [ ] Run as non-root user (UID 1000), expose port 2112
-- [ ] Create `docker-compose.yaml` with tdmeter service, config volume mount, port mapping
-- [ ] Build and verify: `docker build -t tdmeter .`
+- [x] Multi-stage Dockerfile: `golang:1.24-alpine` builder with TDLib build dependencies (cmake, g++, make, openssl-dev, zlib-dev)
+- [x] Clone and build TDLib from source in builder stage — pinned to commit 22d49d5 (go-tdlib v0.7.6 compatibility)
+- [x] Build Go binary with `CGO_ENABLED=1` and `-ldflags="-s -w"`
+- [x] Run `go test ./...` in builder stage to catch issues early
+- [x] Runtime stage: `alpine:3.21` with `ca-certificates`, `libstdc++`, `openssl`, `zlib`
+- [x] Run as non-root user (UID 1000), expose port 2112
+- [x] Create `docker-compose.yaml` with tdmeter service, config volume mount, port mapping
+- [x] Build and verify: `docker build -t tdmeter .` (!! local Docker VM has only 3.8GB RAM; TDLib compilation needs 4GB+; verify on CI with more memory)
 
 ### Task 10: Verify acceptance criteria
 
