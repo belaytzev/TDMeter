@@ -1,6 +1,17 @@
 package checker
 
-import "time"
+import (
+	"context"
+	"time"
+)
+
+// Checker defines the interface for proxy connectivity checks via TDLib.
+// Implementations perform the actual TDLib testProxy/pingProxy calls.
+// Mock implementations can be used in tests.
+type Checker interface {
+	Check(ctx context.Context, server string, port int, secret string) (latencyMs float64, err error)
+	Close() error
+}
 
 // Status represents the health status of a proxy.
 type Status string

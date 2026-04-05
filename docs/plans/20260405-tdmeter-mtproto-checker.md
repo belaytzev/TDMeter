@@ -104,20 +104,20 @@
 - Modify: `checker/tdlib.go`
 - Create: `checker/tdlib_test.go`
 
-- [ ] Verify `TestProxy`/`PingProxy`/`AddProxy` exists in go-tdlib generated code. If missing, implement raw JSON request via `client.Send()` with manual request/response structs
-- [ ] Define `TDLibChecker` struct holding `*client.Client` and timeout
-- [ ] Implement `NewTDLibChecker(apiID int32, apiHash string, dbPath string) (*TDLibChecker, error)`:
+- [x] Verify `TestProxy`/`PingProxy`/`AddProxy` exists in go-tdlib generated code. If missing, implement raw JSON request via `client.Send()` with manual request/response structs
+- [x] Define `TDLibChecker` struct holding `*client.Client` and timeout
+- [x] Implement `NewTDLibChecker(apiID int32, apiHash string, dbPath string) (*TDLibChecker, error)`:
   - Init TDLib with `SetTdlibParameters` using provided `dbPath` (default: `/tmp/tdmeter-tdlib/`)
   - Handle authorization state machine: remain in unauthenticated state (do not attempt login)
   - `testProxy` and `pingProxy` work without authorization
-- [ ] Implement `Check(ctx context.Context, server string, port int, secret string) (latencyMs float64, err error)`:
+- [x] Implement `Check(ctx context.Context, server string, port int, secret string) (latencyMs float64, err error)`:
   - Call `addProxy` with `proxyTypeMtproto{secret}`, then `pingProxy` for RTT
   - Or use `testProxy` as simpler pass/fail alternative
   - Clean up added proxy after check via `removeProxy`
-- [ ] Implement `Close()` for graceful shutdown (destroy TDLib client)
-- [ ] Define `Checker` interface: `Check(ctx, server, port, secret) (float64, error)` for testability
-- [ ] Write tests with mock `Checker` interface — test result mapping logic
-- [ ] Run tests: `go test ./checker/...`
+- [x] Implement `Close()` for graceful shutdown (destroy TDLib client)
+- [x] Define `Checker` interface: `Check(ctx, server, port, secret) (float64, error)` for testability
+- [x] Write tests with mock `Checker` interface — test result mapping logic
+- [x] Run tests: `go test ./checker/...`
 
 ### Task 6: Prometheus metrics
 
