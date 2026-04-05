@@ -8,3 +8,6 @@ docs
 !go.sum
 Dockerfile
 docker-compose.yaml
+config.yaml
+*.env
+.env*

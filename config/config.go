@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -51,7 +50,9 @@ func Load(path string) (*Config, error) {
 	}
 
 	applyDefaults(cfg)
-	applyEnvOverrides(cfg)
+	if err := applyEnvOverrides(cfg); err != nil {
+		return nil, fmt.Errorf("env overrides: %w", err)
+	}
 
 	if err := validate(cfg); err != nil {
 		return nil, fmt.Errorf("config validation: %w", err)
@@ -81,15 +82,18 @@ func applyDefaults(cfg *Config) {
 	}
 }
 
-func applyEnvOverrides(cfg *Config) {
+func applyEnvOverrides(cfg *Config) error {
 	if v := os.Getenv("TDMETER_API_ID"); v != "" {
-		if id, err := strconv.ParseInt(v, 10, 32); err == nil {
-			cfg.TDLib.APIID = int32(id)
+		id, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			return fmt.Errorf("invalid TDMETER_API_ID %q: %w", v, err)
 		}
+		cfg.TDLib.APIID = int32(id)
 	}
 	if v := os.Getenv("TDMETER_API_HASH"); v != "" {
 		cfg.TDLib.APIHash = v
 	}
+	return nil
 }
 
 func validate(cfg *Config) error {
@@ -103,7 +107,23 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("at least one proxy is required")
 	}
 
+	if cfg.CheckInterval <= 0 {
+		return fmt.Errorf("check_interval must be positive, got %s", cfg.CheckInterval)
+	}
+	if cfg.TCPTimeout <= 0 {
+		return fmt.Errorf("tcp_timeout must be positive, got %s", cfg.TCPTimeout)
+	}
+	if cfg.TDLibTimeout <= 0 {
+		return fmt.Errorf("tdlib_timeout must be positive, got %s", cfg.TDLibTimeout)
+	}
+	if cfg.Concurrency < 1 {
+		return fmt.Errorf("concurrency must be at least 1, got %d", cfg.Concurrency)
+	}
+
 	for i, p := range cfg.Proxies {
+		if p.Name == "" {
+			return fmt.Errorf("proxy[%d]: name is required", i)
+		}
 		if p.Server == "" {
 			return fmt.Errorf("proxy[%d]: server is required", i)
 		}
@@ -122,18 +142,14 @@ func validate(cfg *Config) error {
 }
 
 func validateSecret(secret string) error {
-	// Strip known prefixes for hex validation
-	s := secret
-	if strings.HasPrefix(s, "ee") || strings.HasPrefix(s, "dd") {
-		s = s[2:]
-	}
-
-	if len(s) == 0 {
-		return fmt.Errorf("secret is empty after prefix")
-	}
-
-	if _, err := hex.DecodeString(s); err != nil {
+	b, err := hex.DecodeString(secret)
+	if err != nil {
 		return fmt.Errorf("secret is not valid hex: %w", err)
+	}
+
+	// MTProto secrets: 16 bytes (no prefix), or 17+ bytes (dd/ee prefix + 16-byte key).
+	if len(b) < 16 {
+		return fmt.Errorf("secret too short: got %d bytes, need at least 16", len(b))
 	}
 
 	return nil

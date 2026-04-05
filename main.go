@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/belaytzev/tdmeter/checker"
 	"github.com/belaytzev/tdmeter/config"
@@ -53,30 +54,39 @@ func main() {
 	mux.Handle("/metrics", m.Handler())
 
 	srv := &http.Server{
-		Addr:    cfg.Metrics.Listen,
-		Handler: mux,
+		Addr:              cfg.Metrics.Listen,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      30 * time.Second,
 	}
 
+	srvErrCh := make(chan error, 1)
 	go func() {
 		slog.Info("metrics server starting", "addr", cfg.Metrics.Listen)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("metrics server error", "error", err)
-			os.Exit(1)
+			srvErrCh <- err
 		}
 	}()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go sched.Start(ctx)
+	sched.Start(ctx)
 	slog.Info("scheduler started", "interval", cfg.CheckInterval)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	sig := <-sigCh
 
-	slog.Info("shutdown signal received", "signal", sig)
+	var sig os.Signal
+	select {
+	case sig = <-sigCh:
+		slog.Info("shutdown signal received", "signal", sig)
+	case err := <-srvErrCh:
+		slog.Error("metrics server failed, shutting down", "error", err)
+	}
 
+	cancel()
 	sched.Stop()
 	slog.Info("scheduler stopped")
 
@@ -85,7 +95,9 @@ func main() {
 	}
 	slog.Info("TDLib checker closed")
 
-	if err := srv.Shutdown(context.Background()); err != nil {
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("failed to shutdown metrics server", "error", err)
 	}
 	slog.Info("metrics server stopped")

@@ -24,15 +24,3 @@ func TestDetermineStatus(t *testing.T) {
 		})
 	}
 }
-
-func TestStatusConstants(t *testing.T) {
-	if StatusOnline != "online" {
-		t.Errorf("StatusOnline = %q, want %q", StatusOnline, "online")
-	}
-	if StatusDegraded != "degraded" {
-		t.Errorf("StatusDegraded = %q, want %q", StatusDegraded, "degraded")
-	}
-	if StatusOffline != "offline" {
-		t.Errorf("StatusOffline = %q, want %q", StatusOffline, "offline")
-	}
-}

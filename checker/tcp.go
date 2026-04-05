@@ -20,7 +20,7 @@ func NewTCPChecker(timeout time.Duration) *TCPChecker {
 // Check attempts a TCP connection to server:port and returns whether it was
 // reachable, the round-trip duration, and any error encountered.
 func (c *TCPChecker) Check(ctx context.Context, server string, port int) (reachable bool, duration time.Duration, err error) {
-	addr := fmt.Sprintf("%s:%d", server, port)
+	addr := net.JoinHostPort(server, fmt.Sprintf("%d", port))
 
 	deadline := time.Now().Add(c.timeout)
 	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Before(deadline) {
@@ -38,6 +38,6 @@ func (c *TCPChecker) Check(ctx context.Context, server string, port int) (reacha
 	if err != nil {
 		return false, duration, err
 	}
-	conn.Close()
+	_ = conn.Close()
 	return true, duration, nil
 }

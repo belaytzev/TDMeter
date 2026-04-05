@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -150,6 +151,30 @@ proxies:
 	}
 }
 
+func TestLoad_InvalidEnvAPIID(t *testing.T) {
+	content := `
+tdlib:
+  api_id: 12345
+  api_hash: "abc123"
+proxies:
+  - name: p1
+    server: example.com
+    port: 443
+    secret: "ee0123456789abcdef0123456789abcdef"
+`
+	path := writeConfig(t, content)
+
+	t.Setenv("TDMETER_API_ID", "not_a_number")
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for invalid TDMETER_API_ID")
+	}
+	if !strings.Contains(err.Error(), "TDMETER_API_ID") {
+		t.Errorf("error should mention TDMETER_API_ID, got: %v", err)
+	}
+}
+
 func TestLoad_MissingFile(t *testing.T) {
 	_, err := Load("/nonexistent/config.yaml")
 	if err == nil {
@@ -285,7 +310,7 @@ func TestValidateSecret_ValidSecrets(t *testing.T) {
 		name   string
 		secret string
 	}{
-		{"simple_hex", "0123456789abcdef"},
+		{"simple_hex", "0123456789abcdef0123456789abcdef"},
 		{"ee_prefix", "ee0123456789abcdef0123456789abcdef"},
 		{"dd_prefix", "dd0123456789abcdef0123456789abcdef"},
 	}
@@ -308,6 +333,7 @@ func TestValidateSecret_InvalidSecrets(t *testing.T) {
 		{"only_dd_prefix", "dd"},
 		{"invalid_hex", "GHIJ"},
 		{"odd_length_hex", "abc"},
+		{"too_short", "0123456789abcdef"},
 	}
 
 	for _, tt := range tests {

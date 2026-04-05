@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -92,15 +91,6 @@ func listenerProxy(t *testing.T, ln net.Listener, name string) config.ProxyConfi
 	}
 }
 
-func splitAddr(t *testing.T, addr string) (string, int) {
-	t.Helper()
-	parts := strings.Split(addr, ":")
-	port, err := strconv.Atoi(parts[len(parts)-1])
-	if err != nil {
-		t.Fatalf("parse port from %s: %v", addr, err)
-	}
-	return strings.Join(parts[:len(parts)-1], ":"), port
-}
 
 func TestRunCheckRound_AllOffline(t *testing.T) {
 	tcp := checker.NewTCPChecker(50 * time.Millisecond)

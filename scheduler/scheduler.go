@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/belaytzev/tdmeter/checker"
@@ -22,6 +23,9 @@ type Scheduler struct {
 	interval    time.Duration
 	stopCh      chan struct{}
 	done        chan struct{}
+	started     atomic.Bool
+	startOnce   sync.Once
+	stopOnce    sync.Once
 }
 
 // New creates a Scheduler with the given dependencies.
@@ -104,7 +108,13 @@ func (s *Scheduler) checkProxy(ctx context.Context, p config.ProxyConfig) checke
 
 // Start begins periodic check rounds at the configured interval.
 // It runs the first round immediately, then repeats on a ticker.
+// It is safe to call Start multiple times; only the first call has effect.
 func (s *Scheduler) Start(ctx context.Context) {
+	s.startOnce.Do(func() { s.startLoop(ctx) })
+}
+
+func (s *Scheduler) startLoop(ctx context.Context) {
+	s.started.Store(true)
 	go func() {
 		defer close(s.done)
 
@@ -127,6 +137,9 @@ func (s *Scheduler) Start(ctx context.Context) {
 }
 
 func (s *Scheduler) runAndUpdate(ctx context.Context) {
+	if ctx.Err() != nil {
+		return
+	}
 	start := time.Now()
 	results := s.RunCheckRound(ctx, s.proxies)
 	duration := time.Since(start)
@@ -154,7 +167,10 @@ func (s *Scheduler) runAndUpdate(ctx context.Context) {
 }
 
 // Stop signals the scheduler to stop and waits for it to finish.
+// It is safe to call Stop multiple times. If Start was never called, Stop returns immediately.
 func (s *Scheduler) Stop() {
-	close(s.stopCh)
-	<-s.done
+	s.stopOnce.Do(func() { close(s.stopCh) })
+	if s.started.Load() {
+		<-s.done
+	}
 }

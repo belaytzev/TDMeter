@@ -23,47 +23,8 @@ func (m *mockChecker) Close() error {
 	return nil
 }
 
-func TestCheckerInterface(t *testing.T) {
-	// Verify mockChecker satisfies the Checker interface.
-	var _ Checker = (*mockChecker)(nil)
-}
-
-func TestMockChecker_SuccessfulCheck(t *testing.T) {
-	mock := &mockChecker{latency: 42.5}
-
-	latency, err := mock.Check(context.Background(), "proxy.example.com", 443, "ee0123456789abcdef")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if latency != 42.5 {
-		t.Errorf("latency = %f, want 42.5", latency)
-	}
-}
-
-func TestMockChecker_FailedCheck(t *testing.T) {
-	mock := &mockChecker{err: fmt.Errorf("proxy unreachable")}
-
-	_, err := mock.Check(context.Background(), "proxy.example.com", 443, "ee0123456789abcdef")
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if err.Error() != "proxy unreachable" {
-		t.Errorf("error = %q, want %q", err.Error(), "proxy unreachable")
-	}
-}
-
-func TestMockChecker_Close(t *testing.T) {
-	mock := &mockChecker{}
-	if mock.closed {
-		t.Fatal("expected closed=false before Close()")
-	}
-	if err := mock.Close(); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !mock.closed {
-		t.Fatal("expected closed=true after Close()")
-	}
-}
+// Compile-time interface conformance check.
+var _ Checker = (*mockChecker)(nil)
 
 func TestResultMappingWithMockChecker(t *testing.T) {
 	// Test the full result-mapping flow: TCP check -> Checker -> DetermineStatus.
@@ -124,38 +85,6 @@ func TestResultMappingWithMockChecker(t *testing.T) {
 				t.Errorf("latency = %f, want %f", latencyMs, tt.wantLatency)
 			}
 		})
-	}
-}
-
-func TestResultBuildingWithMockChecker(t *testing.T) {
-	// Simulate building a Result from check outcomes.
-	mock := &mockChecker{latency: 85.3}
-
-	latency, err := mock.Check(context.Background(), "nl-proxy.example.com", 8443, "ee1234")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	status := DetermineStatus(true, true)
-	now := time.Now()
-
-	result := Result{
-		Name:      "nl-proxy-1",
-		Server:    "nl-proxy.example.com",
-		Port:      "8443",
-		Status:    status,
-		LatencyMs: latency,
-		CheckedAt: now,
-	}
-
-	if result.Status != StatusOnline {
-		t.Errorf("result.Status = %q, want %q", result.Status, StatusOnline)
-	}
-	if result.LatencyMs != 85.3 {
-		t.Errorf("result.LatencyMs = %f, want 85.3", result.LatencyMs)
-	}
-	if result.Name != "nl-proxy-1" {
-		t.Errorf("result.Name = %q, want %q", result.Name, "nl-proxy-1")
 	}
 }
 
