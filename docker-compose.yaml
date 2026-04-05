@@ -1,0 +1,9 @@
+services:
+  tdmeter:
+    build: .
+    container_name: tdmeter
+    ports:
+      - "2112:2112"
+    volumes:
+      - ./config.yaml:/etc/tdmeter/config.yaml:ro
+    restart: unless-stopped

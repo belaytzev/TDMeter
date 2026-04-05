@@ -1,0 +1,13 @@
+.git
+.gitignore
+.claude
+.ralphex
+docs
+*.md
+!go.mod
+!go.sum
+Dockerfile
+docker-compose.yaml
+config.yaml
+*.env
+.env*
