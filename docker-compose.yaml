@@ -1,6 +1,6 @@
 services:
   tdmeter:
-    build: .
+    image: ghcr.io/belaytzev/tdmeter:latest
     container_name: tdmeter
     ports:
       - "2112:2112"
