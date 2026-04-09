@@ -22,6 +22,7 @@ RUN cd /td && \
     mkdir build && cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr/local \
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
           -DTD_ENABLE_BENCHMARK=OFF \
           -DTD_ENABLE_JNI=OFF \
           -DTD_ENABLE_DOTNET=OFF \
