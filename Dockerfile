@@ -1,5 +1,5 @@
 # Stage 1: Build TDLib from source
-FROM alpine:3.21 AS tdlib-builder
+FROM alpine:3.23 AS tdlib-builder
 
 RUN apk add --no-cache \
     cmake \
@@ -22,6 +22,7 @@ RUN cd /td && \
     mkdir build && cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr/local \
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
           -DTD_ENABLE_BENCHMARK=OFF \
           -DTD_ENABLE_JNI=OFF \
           -DTD_ENABLE_DOTNET=OFF \
@@ -40,7 +41,7 @@ RUN cd /td && \
     done
 
 # Stage 2: Build Go binary
-FROM golang:1.24-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 RUN apk add --no-cache \
     g++ \
@@ -71,7 +72,7 @@ RUN CGO_ENABLED=1 go build \
     -o /tdmeter .
 
 # Stage 3: Minimal runtime image
-FROM alpine:3.21
+FROM alpine:3.23
 
 RUN apk add --no-cache \
     ca-certificates \
