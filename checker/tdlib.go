@@ -36,11 +36,11 @@ type proxyOnlyAuthorizer struct {
 }
 
 func (a *proxyOnlyAuthorizer) Handle(c *tdlib.Client, state tdlib.AuthorizationState) error {
-	switch state.AuthorizationStateType() {
-	case tdlib.TypeAuthorizationStateWaitTdlibParameters:
-		_, err := c.SetTdlibParameters(a.params)
+	switch state.AuthorizationStateConstructor() {
+	case tdlib.ConstructorAuthorizationStateWaitTdlibParameters:
+		_, err := c.SetTdlibParameters(context.Background(), a.params)
 		return err
-	case tdlib.TypeAuthorizationStateWaitPhoneNumber:
+	case tdlib.ConstructorAuthorizationStateWaitPhoneNumber:
 		// Export the client reference so the checker can use it for proxy ops.
 		select {
 		case a.clientCh <- c:
@@ -82,14 +82,18 @@ func NewTDLibChecker(apiID int32, apiHash string, dbPath string, timeout time.Du
 		done:     make(chan struct{}),
 	}
 
+	// Silence TDLib's internal logging. As of go-tdlib v1.0.0-beta1 this is no
+	// longer a NewClient option; SetLogVerbosityLevel runs synchronously via
+	// Execute and needs no client.
+	if _, err := tdlib.SetLogVerbosityLevel(&tdlib.SetLogVerbosityLevelRequest{NewVerbosityLevel: 0}); err != nil {
+		return nil, fmt.Errorf("tdlib set log verbosity failed: %w", err)
+	}
+
 	// NewClient blocks on Authorize. We run it in a goroutine because our
 	// authorizer intentionally pauses at WaitPhoneNumber.
 	errCh := make(chan error, 1)
 	go func() {
-		_, err := tdlib.NewClient(
-			auth,
-			tdlib.WithLogVerbosity(&tdlib.SetLogVerbosityLevelRequest{NewVerbosityLevel: 0}),
-		)
+		_, err := tdlib.NewClient(auth)
 		if err != nil {
 			errCh <- err
 		}
@@ -131,7 +135,7 @@ func (c *TDLibChecker) Check(ctx context.Context, server string, port int, secre
 	c.inflight.Add(1)
 	go func() {
 		defer c.inflight.Done()
-		proxy, err := c.client.AddProxy(&tdlib.AddProxyRequest{
+		proxy, err := c.client.AddProxy(ctx, &tdlib.AddProxyRequest{
 			Server: server,
 			Port:   int32(port),
 			Enable: false,
@@ -142,12 +146,13 @@ func (c *TDLibChecker) Check(ctx context.Context, server string, port int, secre
 			return
 		}
 		defer func() {
-			if _, err := c.client.RemoveProxy(&tdlib.RemoveProxyRequest{ProxyId: proxy.Id}); err != nil {
+			// Use a fresh context so cleanup runs even if the check's ctx expired.
+			if _, err := c.client.RemoveProxy(context.Background(), &tdlib.RemoveProxyRequest{ProxyId: proxy.Id}); err != nil {
 				slog.Warn("removeProxy failed", "proxyId", proxy.Id, "error", err)
 			}
 		}()
 
-		seconds, err := c.client.PingProxy(&tdlib.PingProxyRequest{ProxyId: proxy.Id})
+		seconds, err := c.client.PingProxy(ctx, &tdlib.PingProxyRequest{ProxyId: proxy.Id})
 		if err != nil {
 			ch <- checkResult{err: fmt.Errorf("pingProxy failed: %w", err)}
 			return

@@ -11,8 +11,13 @@ RUN apk add --no-cache \
     openssl-dev \
     zlib-dev
 
-# Pin to the commit expected by go-tdlib v0.7.6
-ARG TDLIB_COMMIT=22d49d5b87a4d5fc60a194dab02dd1d71529687f
+# Pin to the commit expected by go-tdlib v1.0.0-beta1 (TDLib 1.8.46)
+ARG TDLIB_COMMIT=b498497bbfd6b80c86f800b3546a0170206317d3
+
+# Parallel compile jobs for the TDLib build. Defaults to all cores; lower it
+# (e.g. --build-arg TDLIB_BUILD_JOBS=2) on memory-constrained hosts, as TDLib's
+# heavy C++ templates can exhaust RAM with high parallelism.
+ARG TDLIB_BUILD_JOBS=
 
 RUN git clone https://github.com/tdlib/td.git /td && \
     cd /td && \
@@ -26,8 +31,9 @@ RUN cd /td && \
           -DTD_ENABLE_BENCHMARK=OFF \
           -DTD_ENABLE_JNI=OFF \
           -DTD_ENABLE_DOTNET=OFF \
+          -DCMAKE_CXX_FLAGS="--param ggc-min-expand=10 --param ggc-min-heapsize=32768" \
           .. && \
-    cmake --build . --target tdjson_static -j "$(nproc)" && \
+    cmake --build . --target tdjson_static -j "${TDLIB_BUILD_JOBS:-$(nproc)}" && \
     find . -name '*.a' -exec cp {} /usr/local/lib/ \; && \
     cd /td && \
     find td -name '*.h' -o -name '*.hpp' | while read f; do \
