@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/zelenin/go-tdlib v0.7.6
+	github.com/zelenin/go-tdlib v1.0.0-beta1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
