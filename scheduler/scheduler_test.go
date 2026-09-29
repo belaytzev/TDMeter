@@ -92,7 +92,6 @@ func listenerProxy(t *testing.T, ln net.Listener, name string) config.ProxyConfi
 	}
 }
 
-
 func TestRunCheckRound_AllOffline(t *testing.T) {
 	tcp := checker.NewTCPChecker(50 * time.Millisecond)
 	mock := &mockChecker{latency: 42.0}
