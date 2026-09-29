@@ -7,9 +7,10 @@ tdlib:
   api_hash: "your_api_hash_here"  # Telegram API Hash
   db_path: "/tmp/tdmeter-tdlib/"  # TDLib database directory (default: /tmp/tdmeter-tdlib/)
 
-# MTProto proxies to monitor (at least one required)
+# Proxies to monitor (at least one required)
 proxies:
   - name: "proxy-eu-1"
+    type: mtproto        # mtproto (default), socks5, or http
     server: "proxy1.example.com"
     port: 443
     secret: "ee0123456789abcdef0123456789abcdef"  # Hex-encoded secret (ee=fake-TLS, dd=padded)
@@ -18,6 +19,19 @@ proxies:
     server: "proxy2.example.com"
     port: 8443
     secret: "dd0123456789abcdef0123456789abcdef"
+
+  - name: "socks-office"
+    type: socks5
+    server: "10.0.0.5"
+    port: 1080
+    username: "monitor"  # Optional; SOCKS5 login and password must be under 128 bytes
+    password: "changeme"
+
+  - name: "http-gateway"
+    type: http
+    server: "gw.example.com"
+    port: 3128
+    # http_only: true    # For HTTP proxies without CONNECT support
 
 # Prometheus metrics endpoint
 metrics:

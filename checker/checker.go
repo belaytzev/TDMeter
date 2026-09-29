@@ -3,13 +3,15 @@ package checker
 import (
 	"context"
 	"time"
+
+	"github.com/belaytzev/tdmeter/config"
 )
 
 // Checker defines the interface for proxy connectivity checks via TDLib.
 // Implementations perform the actual TDLib testProxy/pingProxy calls.
 // Mock implementations can be used in tests.
 type Checker interface {
-	Check(ctx context.Context, server string, port int, secret string) (latencyMs float64, err error)
+	Check(ctx context.Context, p config.ProxyConfig) (latencyMs float64, err error)
 	Close() error
 }
 
@@ -25,6 +27,7 @@ const (
 // Result holds the outcome of a proxy health check.
 type Result struct {
 	Name      string
+	Type      string
 	Server    string
 	Port      string
 	Status    Status

@@ -22,7 +22,7 @@ type mockChecker struct {
 	calls   atomic.Int32
 }
 
-func (m *mockChecker) Check(_ context.Context, _ string, _ int, _ string) (float64, error) {
+func (m *mockChecker) Check(_ context.Context, _ config.ProxyConfig) (float64, error) {
 	m.calls.Add(1)
 	return m.latency, m.err
 }
@@ -35,7 +35,7 @@ type conditionalMockChecker struct {
 	latency float64
 }
 
-func (c *conditionalMockChecker) Check(_ context.Context, _ string, _ int, _ string) (float64, error) {
+func (c *conditionalMockChecker) Check(_ context.Context, _ config.ProxyConfig) (float64, error) {
 	n := c.counter.Add(1)
 	if n == 1 {
 		return c.latency, nil
@@ -86,9 +86,9 @@ func listenerProxy(t *testing.T, ln net.Listener, name string) config.ProxyConfi
 	port, _ := strconv.Atoi(portStr)
 	return config.ProxyConfig{
 		Name:   name,
+		Type:   config.ProxyTypeSOCKS5,
 		Server: host,
 		Port:   port,
-		Secret: "ee0000000000000000000000000000000000",
 	}
 }
 
@@ -172,6 +172,9 @@ func TestRunCheckRound_Online(t *testing.T) {
 		}
 		if r.LatencyMs != 55.5 {
 			t.Errorf("result[%d]: expected latency 55.5, got %f", i, r.LatencyMs)
+		}
+		if r.Type != config.ProxyTypeSOCKS5 {
+			t.Errorf("result[%d]: expected type socks5, got %q", i, r.Type)
 		}
 	}
 }

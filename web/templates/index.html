@@ -422,7 +422,7 @@
         </div>
         <div class="proxy-info">
           <div class="proxy-name" x-text="proxy.name"></div>
-          <div class="proxy-server" x-text="proxy.server + ':' + proxy.port"></div>
+          <div class="proxy-server" x-text="(proxy.type ? proxy.type.toUpperCase() + ' · ' : '') + proxy.server + ':' + proxy.port"></div>
         </div>
         <a class="proxy-health-link"
            :href="'/health/' + proxy.name"

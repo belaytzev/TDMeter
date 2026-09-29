@@ -12,7 +12,7 @@ import (
 func setupStore() *StatusStore {
 	s := NewStatusStore()
 	s.Update([]checker.Result{
-		{Name: "fast-proxy", Server: "1.2.3.4", Port: "443", Status: checker.StatusOnline, LatencyMs: 42},
+		{Name: "fast-proxy", Type: "socks5", Server: "1.2.3.4", Port: "443", Status: checker.StatusOnline, LatencyMs: 42},
 		{Name: "slow-proxy", Server: "5.6.7.8", Port: "8443", Status: checker.StatusDegraded, LatencyMs: -1},
 		{Name: "dead-proxy", Server: "9.0.1.2", Port: "443", Status: checker.StatusOffline, LatencyMs: -1},
 	})
@@ -120,6 +120,7 @@ func TestHealthHandler_EmptyName(t *testing.T) {
 
 type apiProxy struct {
 	Name      string  `json:"name"`
+	Type      string  `json:"type"`
 	Server    string  `json:"server"`
 	Port      string  `json:"port"`
 	Status    string  `json:"status"`
@@ -159,7 +160,7 @@ func TestAPIStatusHandler_ReturnsAllProxies(t *testing.T) {
 
 	// Verify first proxy details
 	p := resp.Proxies[0]
-	if p.Name != "fast-proxy" || p.Status != "online" || p.LatencyMs != 42 {
+	if p.Name != "fast-proxy" || p.Type != "socks5" || p.Status != "online" || p.LatencyMs != 42 {
 		t.Fatalf("unexpected first proxy: %+v", p)
 	}
 }

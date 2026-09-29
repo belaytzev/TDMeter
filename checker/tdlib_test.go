@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/belaytzev/tdmeter/config"
 )
 
 // mockChecker implements the Checker interface for testing.
@@ -14,7 +16,7 @@ type mockChecker struct {
 	closed  bool
 }
 
-func (m *mockChecker) Check(ctx context.Context, server string, port int, secret string) (float64, error) {
+func (m *mockChecker) Check(ctx context.Context, p config.ProxyConfig) (float64, error) {
 	return m.latency, m.err
 }
 
@@ -66,7 +68,7 @@ func TestResultMappingWithMockChecker(t *testing.T) {
 			var latencyMs float64
 
 			if tt.tcpOk {
-				lat, err := mock.Check(context.Background(), "proxy.example.com", 443, "eesecret")
+				lat, err := mock.Check(context.Background(), config.ProxyConfig{Server: "proxy.example.com", Port: 443, Secret: "eesecret"})
 				tdlibOk = err == nil
 				if tdlibOk {
 					latencyMs = lat

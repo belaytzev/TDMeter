@@ -390,6 +390,62 @@ func TestLoad_AuthFromEnv(t *testing.T) {
 	}
 }
 
+func TestLoad_ProxyTypes(t *testing.T) {
+	const header = `
+tdlib:
+  api_id: 12345
+  api_hash: "abc123"
+proxies:
+  - name: p1
+    server: example.com
+    port: 1080
+`
+	const secret = `    secret: "ee0123456789abcdef0123456789abcdef"` + "\n"
+	long := strings.Repeat("a", 128)
+
+	tests := []struct {
+		name     string
+		fields   string
+		wantType string
+		wantErr  string
+	}{
+		{"default_mtproto", secret, ProxyTypeMTProto, ""},
+		{"explicit_mtproto", "    type: mtproto\n" + secret, ProxyTypeMTProto, ""},
+		{"socks5_no_auth", "    type: socks5\n", ProxyTypeSOCKS5, ""},
+		{"socks5_auth", "    type: socks5\n    username: u\n    password: p\n", ProxyTypeSOCKS5, ""},
+		{"http_connect", "    type: http\n    username: u\n    password: p\n", ProxyTypeHTTP, ""},
+		{"http_only", "    type: http\n    http_only: true\n", ProxyTypeHTTP, ""},
+		{"unknown_type", "    type: vpn\n", "", "unknown type"},
+		{"mtproto_missing_secret", "    type: mtproto\n", "", "secret is required"},
+		{"mtproto_with_username", "    username: u\n" + secret, "", "not supported for mtproto"},
+		{"mtproto_with_http_only", "    http_only: true\n" + secret, "", "not supported for mtproto"},
+		{"socks5_with_secret", "    type: socks5\n" + secret, "", "only supported for mtproto"},
+		{"http_with_secret", "    type: http\n" + secret, "", "only supported for mtproto"},
+		{"socks5_with_http_only", "    type: socks5\n    http_only: true\n", "", "only supported for http"},
+		{"socks5_long_username", "    type: socks5\n    username: " + long + "\n", "", "shorter than 128"},
+		{"socks5_long_password", "    type: socks5\n    password: " + long + "\n", "", "shorter than 128"},
+		{"http_long_password", "    type: http\n    password: " + long + "\n", ProxyTypeHTTP, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Load(writeConfig(t, header+tt.fields))
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got := cfg.Proxies[0].Type; got != tt.wantType {
+				t.Fatalf("type = %q, want %q", got, tt.wantType)
+			}
+		})
+	}
+}
+
 func itoa(i int) string {
 	return fmt.Sprintf("%d", i)
 }

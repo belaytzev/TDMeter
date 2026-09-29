@@ -10,10 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/belaytzev/tdmeter/config"
 	tdlib "github.com/zelenin/go-tdlib/client"
 )
 
-// TDLibChecker checks MTProto proxy connectivity using TDLib's addProxy and
+// TDLibChecker checks Telegram proxy connectivity using TDLib's addProxy and
 // pingProxy APIs. It maintains a single TDLib client in an unauthenticated
 // state -- proxy methods do not require Telegram authorization.
 //
@@ -115,15 +116,33 @@ func NewTDLibChecker(apiID int32, apiHash string, dbPath string, timeout time.Du
 	}
 }
 
-// Check performs an addProxy + pingProxy sequence against the given MTProto
-// proxy, returning the round-trip latency in milliseconds. The proxy entry
-// is removed after the check.
-func (c *TDLibChecker) Check(ctx context.Context, server string, port int, secret string) (float64, error) {
+func proxyType(p config.ProxyConfig) (tdlib.ProxyType, error) {
+	switch p.Type {
+	case config.ProxyTypeMTProto:
+		return &tdlib.ProxyTypeMtproto{Secret: p.Secret}, nil
+	case config.ProxyTypeSOCKS5:
+		return &tdlib.ProxyTypeSocks5{Username: p.Username, Password: p.Password}, nil
+	case config.ProxyTypeHTTP:
+		return &tdlib.ProxyTypeHttp{Username: p.Username, Password: p.Password, HttpOnly: p.HTTPOnly}, nil
+	default:
+		return nil, fmt.Errorf("unsupported proxy type %q", p.Type)
+	}
+}
+
+// Check performs an addProxy + pingProxy sequence against the given proxy,
+// returning the round-trip latency in milliseconds. The proxy entry is
+// removed after the check.
+func (c *TDLibChecker) Check(ctx context.Context, p config.ProxyConfig) (float64, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
 	if c.client == nil {
 		return 0, fmt.Errorf("tdlib client not initialized")
+	}
+
+	pt, err := proxyType(p)
+	if err != nil {
+		return 0, err
 	}
 
 	type checkResult struct {
@@ -136,10 +155,10 @@ func (c *TDLibChecker) Check(ctx context.Context, server string, port int, secre
 	go func() {
 		defer c.inflight.Done()
 		proxy, err := c.client.AddProxy(ctx, &tdlib.AddProxyRequest{
-			Server: server,
-			Port:   int32(port),
+			Server: p.Server,
+			Port:   int32(p.Port),
 			Enable: false,
-			Type:   &tdlib.ProxyTypeMtproto{Secret: secret},
+			Type:   pt,
 		})
 		if err != nil {
 			ch <- checkResult{err: fmt.Errorf("addProxy failed: %w", err)}
