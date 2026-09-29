@@ -46,16 +46,16 @@ func TestResultMappingWithMockChecker(t *testing.T) {
 			wantLatency:    150.0,
 		},
 		{
-			name:       "tcp ok but checker fails - degraded",
-			tcpOk:      true,
-			checkerErr: fmt.Errorf("ping failed"),
-			wantStatus: StatusDegraded,
+			name:        "tcp ok but checker fails - degraded",
+			tcpOk:       true,
+			checkerErr:  fmt.Errorf("ping failed"),
+			wantStatus:  StatusDegraded,
 			wantLatency: -1,
 		},
 		{
-			name:       "tcp fail - offline regardless of checker",
-			tcpOk:      false,
-			wantStatus: StatusOffline,
+			name:        "tcp fail - offline regardless of checker",
+			tcpOk:       false,
+			wantStatus:  StatusOffline,
 			wantLatency: -1,
 		},
 	}

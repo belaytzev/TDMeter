@@ -6,13 +6,63 @@ on:
     tags: ["v*"]
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - "docs/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "gofmt needed on:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race ./...
+
+      # cgo type-checking needs only the header; tdjson_export.h is CMake-generated, so stub it
+      - name: Vet with tdlib tag
+        run: |
+          commit=$(sed -n 's/^ARG TDLIB_COMMIT=//p' Dockerfile)
+          [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || { echo "bad TDLIB_COMMIT: $commit"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/tdinc/td/telegram"
+          curl -fsSL "https://raw.githubusercontent.com/tdlib/td/${commit}/td/telegram/td_json_client.h" \
+            -o "$RUNNER_TEMP/tdinc/td/telegram/td_json_client.h"
+          echo '#define TDJSON_EXPORT' > "$RUNNER_TEMP/tdinc/td/telegram/tdjson_export.h"
+          CGO_CFLAGS="-I$RUNNER_TEMP/tdinc" go vet -tags=tdlib ./...
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
 
     permissions:
