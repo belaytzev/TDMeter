@@ -5,8 +5,8 @@
 <h1 align="center">TDMeter</h1>
 
 <p align="center">
-  <strong>MTProto Proxy Health Monitor</strong><br>
-  Two-stage health checks for Telegram MTProto proxies with a real-time web dashboard, Prometheus metrics, and monitoring integrations.
+  <strong>Telegram Proxy Health Monitor</strong><br>
+  Two-stage health checks for Telegram MTProto, SOCKS5, and HTTP proxies with a real-time web dashboard, Prometheus metrics, and monitoring integrations.
 </p>
 
 <p align="center">
@@ -19,7 +19,7 @@
 
 ## 🔍 What Is TDMeter?
 
-TDMeter monitors your Telegram MTProto proxy servers by running **two-stage health checks** and reporting the results through a beautiful dark-themed web dashboard, a JSON API, per-proxy health endpoints, and Prometheus metrics.
+TDMeter monitors the MTProto, SOCKS5, and HTTP proxy servers you use for Telegram by running **two-stage health checks** and reporting the results through a beautiful dark-themed web dashboard, a JSON API, per-proxy health endpoints, and Prometheus metrics.
 
 No Telegram account or authentication is required. TDLib's proxy testing works in an unauthenticated state.
 
@@ -28,7 +28,8 @@ No Telegram account or authentication is required. TDLib's proxy testing works i
 
 ## 🚀 Key Features
 
-- 🔬 **Two-stage health checks** — TCP connectivity test + TDLib MTProto protocol verification
+- 🔬 **Two-stage health checks** — TCP connectivity test + TDLib ping to Telegram through the proxy
+- 🧦 **MTProto, SOCKS5, and HTTP proxies** — Including SOCKS5/HTTP credentials and HTTP-only proxies
 - 🟢🟡🔴 **Three-state status model** — Online, Degraded, and Offline for precise diagnostics
 - 🖥️ **Real-time web dashboard** — Dark theme, auto-refresh, status filtering (Alpine.js + custom CSS)
 - 📊 **Prometheus metrics** — Five gauges covering proxy status, latency, and check duration
@@ -60,7 +61,7 @@ TDMeter performs a **two-stage check** for every proxy on each interval:
 | Status | TCP | TDLib | Meaning |
 |--------|-----|-------|---------|
 | 🟢 **Online** | ✅ | ✅ | Proxy is fully functional |
-| 🟡 **Degraded** | ✅ | ❌ | Server reachable but MTProto protocol fails |
+| 🟡 **Degraded** | ✅ | ❌ | Server reachable but Telegram is unreachable through it (bad secret or credentials, proxy ACL) |
 | 🔴 **Offline** | ❌ | — | Server unreachable, TDLib check is skipped |
 
 ## 🚀 Quick Start
@@ -167,6 +168,18 @@ proxies:
     port: 8443
     secret: "dd0123456789abcdef0123456789abcdef"
 
+  - name: "socks-office"
+    type: socks5
+    server: "10.0.0.5"
+    port: 1080
+    username: "monitor"                   # Optional
+    password: "changeme"
+
+  - name: "http-gateway"
+    type: http
+    server: "gw.example.com"
+    port: 3128
+
 metrics:
   listen: ":2112"
 
@@ -188,11 +201,15 @@ concurrency: 5
 | `tdlib.api_id` | *(required)* | Telegram API ID |
 | `tdlib.api_hash` | *(required)* | Telegram API Hash |
 | `tdlib.db_path` | `/tmp/tdmeter-tdlib/` | TDLib database directory |
-| `proxies` | *(required, min 1)* | List of MTProto proxies to monitor |
+| `proxies` | *(required, min 1)* | List of proxies to monitor |
 | `proxies[].name` | *(required)* | Display name for the proxy |
+| `proxies[].type` | `mtproto` | Proxy type: `mtproto`, `socks5`, or `http` |
 | `proxies[].server` | *(required)* | Proxy server hostname or IP |
 | `proxies[].port` | *(required)* | Proxy port (1-65535) |
-| `proxies[].secret` | *(required)* | Hex-encoded MTProto secret |
+| `proxies[].secret` | *(required for `mtproto`)* | Hex-encoded MTProto secret; not allowed for other types |
+| `proxies[].username` | *(empty)* | `socks5`/`http` only. Login for the proxy (SOCKS5: under 128 bytes) |
+| `proxies[].password` | *(empty)* | `socks5`/`http` only. Password for the proxy (SOCKS5: under 128 bytes) |
+| `proxies[].http_only` | `false` | `http` only. Set for proxies without `CONNECT` support; TDLib then talks to Telegram over plain HTTP requests |
 | `metrics.listen` | `:2112` | Address for HTTP server (dashboard + metrics) |
 | `web.auth.username` | *(empty)* | Basic auth username (set both or neither) |
 | `web.auth.password` | *(empty)* | Basic auth password (set both or neither) |
@@ -210,6 +227,12 @@ Secrets are hex-encoded. The prefix byte determines the mode:
 | `ee` | Fake-TLS | Most common. Wraps MTProto in TLS to avoid detection |
 | `dd` | Padded intermediate | Adds padding to obfuscate traffic patterns |
 | *(none)* | Simple intermediate | Basic MTProto obfuscation |
+
+### 🧦 SOCKS5 and HTTP Proxies
+
+TDMeter checks SOCKS5 and HTTP proxies the same way as MTProto: a TCP connect to the proxy, then a TDLib ping to a Telegram datacenter through it. A proxy that accepts connections but rejects the credentials or refuses to reach Telegram shows up as **Degraded**.
+
+> **💡 HTTP `CONNECT` ports:** TDLib opens `CONNECT` tunnels to Telegram datacenter IPs on ports 443, 80, or 5222. Many proxies (for example Squid with the default `SSL_ports` ACL) only allow `CONNECT` to 443, which can make an otherwise healthy proxy flap to Degraded. Allow these ports for Telegram's IP ranges, or use `http_only: true` if the proxy doesn't support `CONNECT` at all.
 
 ### 🌍 Environment Variable Overrides
 
@@ -291,15 +314,17 @@ scrape_configs:
   "proxies": [
     {
       "name": "proxy-eu-1",
+      "type": "mtproto",
       "server": "proxy1.example.com",
       "port": "443",
       "status": "online",
       "latency_ms": 142.5
     },
     {
-      "name": "proxy-us-1",
-      "server": "proxy2.example.com",
-      "port": "8443",
+      "name": "socks-office",
+      "type": "socks5",
+      "server": "10.0.0.5",
+      "port": "1080",
       "status": "offline",
       "latency_ms": -1
     }
@@ -376,7 +401,7 @@ tdmeter/
 ├── checker/
 │   ├── checker.go          # 🔍 Status types, Checker interface, DetermineStatus
 │   ├── tcp.go              # 🌐 TCP connectivity checker
-│   └── tdlib.go            # 📡 TDLib MTProto proxy checker (build tag: tdlib)
+│   └── tdlib.go            # 📡 TDLib proxy checker (build tag: tdlib)
 ├── scheduler/
 │   └── scheduler.go        # ⏱️ Periodic check orchestrator with bounded concurrency
 ├── metrics/

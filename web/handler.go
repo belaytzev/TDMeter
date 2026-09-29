@@ -52,6 +52,7 @@ func APIStatusHandler(store *StatusStore) http.Handler {
 
 		type proxyJSON struct {
 			Name      string  `json:"name"`
+			Type      string  `json:"type"`
 			Server    string  `json:"server"`
 			Port      string  `json:"port"`
 			Status    string  `json:"status"`
@@ -62,6 +63,7 @@ func APIStatusHandler(store *StatusStore) http.Handler {
 		for i, r := range results {
 			proxies[i] = proxyJSON{
 				Name:      r.Name,
+				Type:      r.Type,
 				Server:    r.Server,
 				Port:      r.Port,
 				Status:    string(r.Status),

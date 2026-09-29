@@ -41,11 +41,21 @@ type AuthConfig struct {
 	Password string `yaml:"password"`
 }
 
+const (
+	ProxyTypeMTProto = "mtproto"
+	ProxyTypeSOCKS5  = "socks5"
+	ProxyTypeHTTP    = "http"
+)
+
 type ProxyConfig struct {
-	Name   string `yaml:"name"`
-	Server string `yaml:"server"`
-	Port   int    `yaml:"port"`
-	Secret string `yaml:"secret"`
+	Name     string `yaml:"name"`
+	Type     string `yaml:"type"`
+	Server   string `yaml:"server"`
+	Port     int    `yaml:"port"`
+	Secret   string `yaml:"secret"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	HTTPOnly bool   `yaml:"http_only"`
 }
 
 func Load(path string) (*Config, error) {
@@ -89,6 +99,11 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.TDLib.DBPath == "" {
 		cfg.TDLib.DBPath = "/tmp/tdmeter-tdlib/"
+	}
+	for i := range cfg.Proxies {
+		if cfg.Proxies[i].Type == "" {
+			cfg.Proxies[i].Type = ProxyTypeMTProto
+		}
 	}
 }
 
@@ -150,15 +165,44 @@ func validate(cfg *Config) error {
 		if p.Port < 1 || p.Port > 65535 {
 			return fmt.Errorf("proxy[%d]: port must be between 1 and 65535, got %d", i, p.Port)
 		}
-		if p.Secret == "" {
-			return fmt.Errorf("proxy[%d]: secret is required", i)
-		}
-		if err := validateSecret(p.Secret); err != nil {
+		if err := validateProxyType(p); err != nil {
 			return fmt.Errorf("proxy[%d]: %w", i, err)
 		}
 	}
 
 	return nil
+}
+
+func validateProxyType(p ProxyConfig) error {
+	switch p.Type {
+	case ProxyTypeMTProto:
+		if p.Username != "" || p.Password != "" || p.HTTPOnly {
+			return fmt.Errorf("username, password and http_only are not supported for mtproto proxies")
+		}
+		if p.Secret == "" {
+			return fmt.Errorf("secret is required")
+		}
+		return validateSecret(p.Secret)
+	case ProxyTypeSOCKS5:
+		if p.Secret != "" {
+			return fmt.Errorf("secret is only supported for mtproto proxies")
+		}
+		if p.HTTPOnly {
+			return fmt.Errorf("http_only is only supported for http proxies")
+		}
+		// TDLib rejects SOCKS5 credentials of 128+ bytes at connect time.
+		if len(p.Username) >= 128 || len(p.Password) >= 128 {
+			return fmt.Errorf("socks5 username and password must be shorter than 128 bytes")
+		}
+		return nil
+	case ProxyTypeHTTP:
+		if p.Secret != "" {
+			return fmt.Errorf("secret is only supported for mtproto proxies")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown type %q, want %s, %s or %s", p.Type, ProxyTypeMTProto, ProxyTypeSOCKS5, ProxyTypeHTTP)
+	}
 }
 
 func validateSecret(secret string) error {

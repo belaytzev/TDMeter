@@ -82,6 +82,7 @@ func (s *Scheduler) RunCheckRound(ctx context.Context, proxies []config.ProxyCon
 func (s *Scheduler) checkProxy(ctx context.Context, p config.ProxyConfig) checker.Result {
 	r := checker.Result{
 		Name:      p.Name,
+		Type:      p.Type,
 		Server:    p.Server,
 		Port:      fmt.Sprintf("%d", p.Port),
 		CheckedAt: time.Now(),
@@ -94,7 +95,7 @@ func (s *Scheduler) checkProxy(ctx context.Context, p config.ProxyConfig) checke
 
 	var tdlibOk bool
 	if tcpOk {
-		latency, tdlibErr := s.tdlib.Check(ctx, p.Server, p.Port, p.Secret)
+		latency, tdlibErr := s.tdlib.Check(ctx, p)
 		if tdlibErr != nil {
 			slog.Debug("tdlib check failed", "proxy", p.Name, "err", tdlibErr)
 		} else {
