@@ -5,88 +5,70 @@
 <h1 align="center">TDMeter</h1>
 
 <p align="center">
-  <strong>Telegram Proxy Health Monitor</strong><br>
-  Two-stage health checks for Telegram MTProto, SOCKS5, and HTTP proxies with a real-time web dashboard, Prometheus metrics, and monitoring integrations.
+  Health checks for the proxies you use to reach Telegram: MTProto, SOCKS5, and HTTP.
 </p>
 
 <p align="center">
-  <a href="#-quick-start"><img src="https://img.shields.io/badge/quick--start-Docker-blue?logo=docker" alt="Quick Start" /></a>
-  <a href="#-prometheus-metrics"><img src="https://img.shields.io/badge/metrics-Prometheus-orange?logo=prometheus" alt="Prometheus" /></a>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/quick--start-Docker-blue?logo=docker" alt="Quick Start" /></a>
+  <a href="#prometheus-metrics"><img src="https://img.shields.io/badge/metrics-Prometheus-orange?logo=prometheus" alt="Prometheus" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green" alt="License: MIT" /></a>
 </p>
 
 ---
 
-## 🔍 What Is TDMeter?
+TDMeter checks each proxy on a schedule and tells you whether Telegram actually works through it. It has a small web dashboard, a JSON API, a health endpoint per proxy (handy for Uptime Kuma), and Prometheus metrics.
 
-TDMeter monitors the MTProto, SOCKS5, and HTTP proxy servers you use for Telegram by running **two-stage health checks** and reporting the results through a beautiful dark-themed web dashboard, a JSON API, per-proxy health endpoints, and Prometheus metrics.
+You don't need a Telegram account. TDLib can ping proxies before login, so TDMeter never authorizes.
 
-No Telegram account or authentication is required. TDLib's proxy testing works in an unauthenticated state.
-
-<!-- Screenshot placeholder -->
 <!-- <p align="center"><img src=".github/screenshot.png" alt="TDMeter Dashboard" width="800" /></p> -->
 
-## 🚀 Key Features
+## How it works
 
-- 🔬 **Two-stage health checks** — TCP connectivity test + TDLib ping to Telegram through the proxy
-- 🧦 **MTProto, SOCKS5, and HTTP proxies** — Including SOCKS5/HTTP credentials and HTTP-only proxies
-- 🟢🟡🔴 **Three-state status model** — Online, Degraded, and Offline for precise diagnostics
-- 🖥️ **Real-time web dashboard** — Dark theme, auto-refresh, status filtering (Alpine.js + custom CSS)
-- 📊 **Prometheus metrics** — Five gauges covering proxy status, latency, and check duration
-- 🩺 **Per-proxy health endpoints** — `/health/{name}` returns 200/503 for Uptime Kuma integration
-- 🔌 **JSON API** — `/api/status` for custom integrations
-- 🔒 **Optional Basic Auth** — Protects web routes while keeping `/metrics` open for Prometheus
-- ⚙️ **YAML + env var config** — File-based configuration with environment variable overrides
-- 🐳 **Docker ready** — Multi-stage build, single binary, ~30MB runtime image
-- 📦 **Single binary** — All templates and the logo are embedded via `go:embed`
+Every proxy goes through two checks on each round:
 
-## ⚙️ How It Works
-
-TDMeter performs a **two-stage check** for every proxy on each interval:
+1. **TCP connect** to the proxy's host and port. If this fails, the proxy is offline and the second check is skipped.
+2. **TDLib `pingProxy`**: TDLib connects to a Telegram datacenter through the proxy and measures the round trip.
 
 ```
-┌──────────────┐      ┌───────────────────┐      ┌──────────────────┐
-│  Stage 1     │  OK  │  Stage 2          │  OK  │  Status:         │
-│  TCP Connect ├─────►│  TDLib pingProxy  ├─────►│  🟢 Online       │
-└──────┬───────┘      └────────┬──────────┘      └──────────────────┘
-       │                       │
-       │ FAIL                  │ FAIL
-       ▼                       ▼
-┌──────────────────┐   ┌──────────────────┐
-│  Status:         │   │  Status:         │
-│  🔴 Offline      │   │  🟡 Degraded     │
-└──────────────────┘   └──────────────────┘
+TCP connect ──fail──► offline
+     │
+     ok
+     ▼
+TDLib pingProxy ──fail──► degraded
+     │
+     ok
+     ▼
+   online (with latency)
 ```
 
-| Status | TCP | TDLib | Meaning |
-|--------|-----|-------|---------|
-| 🟢 **Online** | ✅ | ✅ | Proxy is fully functional |
-| 🟡 **Degraded** | ✅ | ❌ | Server reachable but Telegram is unreachable through it (bad secret or credentials, proxy ACL) |
-| 🔴 **Offline** | ❌ | — | Server unreachable, TDLib check is skipped |
+| Status | TCP | TDLib | What it means |
+|--------|-----|-------|---------------|
+| online | ok | ok | Telegram works through the proxy |
+| degraded | ok | fail | The proxy answers, but Telegram doesn't work through it: wrong secret or credentials, or the proxy won't connect to Telegram |
+| offline | fail | skipped | The proxy host doesn't accept connections |
 
-## 🚀 Quick Start
+Degraded is the interesting one. A plain port check would call these proxies healthy.
 
-### 🐳 Docker
+## Quick start
+
+TDMeter is easiest to run in Docker, since the image builds TDLib for you.
 
 ```bash
-# 1. Create your config file
 cp config.example.yaml config.yaml
-# Edit config.yaml with your Telegram API credentials and proxy list
+# put your api_id, api_hash, and proxies into config.yaml
 
-# 2. Build and run
 docker build -t tdmeter .
 docker run -d \
   -v $(pwd)/config.yaml:/etc/tdmeter/config.yaml:ro \
   -p 2112:2112 \
   --name tdmeter \
+  --restart unless-stopped \
   tdmeter
 ```
 
-Open **http://localhost:2112** for the dashboard, or check metrics at **http://localhost:2112/metrics**.
+The dashboard is at http://localhost:2112 and metrics are at http://localhost:2112/metrics.
 
-### 🐳 Docker Compose
-
-Create a `docker-compose.yml`:
+With Docker Compose:
 
 ```yaml
 services:
@@ -103,57 +85,15 @@ services:
 docker compose up -d
 ```
 
-> **💡 Note:** TDLib compilation requires **4GB+ RAM**. The Docker build uses a three-stage approach:
-> 1. Build TDLib from source (Alpine + CMake)
-> 2. Build Go binary with CGO and static TDLib linking
-> 3. Minimal Alpine runtime image (~30MB)
+Compiling TDLib needs at least 4 GB of RAM. If the build runs out of memory, lower the parallelism with `--build-arg TDLIB_BUILD_JOBS=2` (or `1`). The Dockerfile has three stages: TDLib is built from source on Alpine, then the Go binary is linked statically against it, and the result is copied into a plain Alpine image of about 60 MB.
 
-## 🔨 Build from Source
+## Configuration
 
-### 📋 Prerequisites
-
-- Go 1.24+
-- TDLib (built from source, pinned to commit `22d49d5` for go-tdlib v0.7.6 compatibility)
-- Telegram API credentials — `api_id` and `api_hash` from [my.telegram.org](https://my.telegram.org)
-
-### 🛠️ Build
-
-Install TDLib first. See the [TDLib build instructions](https://tdlib.github.io/td/build.html).
-
-```bash
-# Clone and build
-git clone https://github.com/belaytzev/tdmeter.git
-cd tdmeter
-
-# Build with TDLib support (CGO required)
-CGO_ENABLED=1 go build -tags=tdlib -o tdmeter .
-
-# Copy and edit config
-cp config.example.yaml config.yaml
-
-# Run
-./tdmeter --config config.yaml
-```
-
-### 🧪 Running Tests
-
-```bash
-# Run unit tests (no TDLib required)
-go test ./...
-
-# TDLib integration tests require the tdlib build tag and a working TDLib installation
-CGO_ENABLED=1 go test -tags=tdlib ./...
-```
-
-## 📝 Configuration
-
-TDMeter uses a YAML config file with optional environment variable overrides.
-
-Copy `config.example.yaml` and edit it:
+TDMeter reads a YAML file (`--config`, default `config.yaml`). A few values can also come from environment variables, see below.
 
 ```yaml
 tdlib:
-  api_id: 12345                          # From https://my.telegram.org
+  api_id: 12345                  # from https://my.telegram.org
   api_hash: "your_api_hash_here"
   db_path: "/tmp/tdmeter-tdlib/"
 
@@ -172,7 +112,7 @@ proxies:
     type: socks5
     server: "10.0.0.5"
     port: 1080
-    username: "monitor"                   # Optional
+    username: "monitor"          # optional
     password: "changeme"
 
   - name: "http-gateway"
@@ -185,7 +125,7 @@ metrics:
 
 web:
   auth:
-    username: ""                          # Leave empty to disable auth
+    username: ""                 # leave both empty to disable auth
     password: ""
 
 check_interval: 60s
@@ -194,120 +134,89 @@ tdlib_timeout: 10s
 concurrency: 5
 ```
 
-### 📋 Config Reference
+### Reference
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `tdlib.api_id` | *(required)* | Telegram API ID |
-| `tdlib.api_hash` | *(required)* | Telegram API Hash |
+| `tdlib.api_id` | required | Telegram API ID |
+| `tdlib.api_hash` | required | Telegram API hash |
 | `tdlib.db_path` | `/tmp/tdmeter-tdlib/` | TDLib database directory |
-| `proxies` | *(required, min 1)* | List of proxies to monitor |
-| `proxies[].name` | *(required)* | Display name for the proxy |
-| `proxies[].type` | `mtproto` | Proxy type: `mtproto`, `socks5`, or `http` |
-| `proxies[].server` | *(required)* | Proxy server hostname or IP |
-| `proxies[].port` | *(required)* | Proxy port (1-65535) |
-| `proxies[].secret` | *(required for `mtproto`)* | Hex-encoded MTProto secret; not allowed for other types |
-| `proxies[].username` | *(empty)* | `socks5`/`http` only. Login for the proxy (SOCKS5: under 128 bytes) |
-| `proxies[].password` | *(empty)* | `socks5`/`http` only. Password for the proxy (SOCKS5: under 128 bytes) |
-| `proxies[].http_only` | `false` | `http` only. Set for proxies without `CONNECT` support; TDLib then talks to Telegram over plain HTTP requests |
-| `metrics.listen` | `:2112` | Address for HTTP server (dashboard + metrics) |
-| `web.auth.username` | *(empty)* | Basic auth username (set both or neither) |
-| `web.auth.password` | *(empty)* | Basic auth password (set both or neither) |
-| `check_interval` | `60s` | How often to run health checks |
-| `tcp_timeout` | `5s` | TCP connection timeout |
-| `tdlib_timeout` | `10s` | TDLib proxy test timeout |
-| `concurrency` | `5` | Maximum concurrent proxy checks |
+| `proxies` | required, at least one | Proxies to check |
+| `proxies[].name` | required | Display name, also used in `/health/{name}` |
+| `proxies[].type` | `mtproto` | `mtproto`, `socks5`, or `http` |
+| `proxies[].server` | required | Hostname or IP |
+| `proxies[].port` | required | 1 to 65535 |
+| `proxies[].secret` | required for `mtproto` | Hex-encoded MTProto secret. Not allowed for other types |
+| `proxies[].username` | empty | `socks5` and `http` only. For SOCKS5 it must be under 128 bytes |
+| `proxies[].password` | empty | `socks5` and `http` only. For SOCKS5 it must be under 128 bytes |
+| `proxies[].http_only` | `false` | `http` only. Set it for proxies that don't support `CONNECT`; TDLib then sends plain HTTP requests |
+| `metrics.listen` | `:2112` | Listen address for the dashboard, API, and metrics |
+| `web.auth.username` | empty | Basic auth user. Set both user and password, or neither |
+| `web.auth.password` | empty | Basic auth password |
+| `check_interval` | `60s` | Time between check rounds |
+| `tcp_timeout` | `5s` | Timeout for the TCP check |
+| `tdlib_timeout` | `10s` | Timeout for the TDLib ping |
+| `concurrency` | `5` | How many proxies are checked at once |
 
-### 🔑 MTProto Secret Format
+TDMeter refuses to start if a proxy has fields that don't fit its type, for example a `secret` on a SOCKS5 proxy. This catches a mixed-up `type` early instead of reporting the proxy as degraded forever.
 
-Secrets are hex-encoded. The prefix byte determines the mode:
+### MTProto secrets
 
-| Prefix | Mode | Description |
-|--------|------|-------------|
-| `ee` | Fake-TLS | Most common. Wraps MTProto in TLS to avoid detection |
-| `dd` | Padded intermediate | Adds padding to obfuscate traffic patterns |
-| *(none)* | Simple intermediate | Basic MTProto obfuscation |
+Secrets are hex strings. The first byte selects the mode:
 
-### 🧦 SOCKS5 and HTTP Proxies
+| Prefix | Mode |
+|--------|------|
+| `ee` | Fake-TLS, the most common one. Traffic looks like TLS |
+| `dd` | Padded intermediate. Adds random padding |
+| none | Plain intermediate obfuscation |
 
-TDMeter checks SOCKS5 and HTTP proxies the same way as MTProto: a TCP connect to the proxy, then a TDLib ping to a Telegram datacenter through it. A proxy that accepts connections but rejects the credentials or refuses to reach Telegram shows up as **Degraded**.
+### SOCKS5 and HTTP proxies
 
-> **💡 HTTP `CONNECT` ports:** TDLib opens `CONNECT` tunnels to Telegram datacenter IPs on ports 443, 80, or 5222. Many proxies (for example Squid with the default `SSL_ports` ACL) only allow `CONNECT` to 443, which can make an otherwise healthy proxy flap to Degraded. Allow these ports for Telegram's IP ranges, or use `http_only: true` if the proxy doesn't support `CONNECT` at all.
+These are checked the same way as MTProto proxies. If the proxy accepts the TCP connection but rejects the credentials or won't connect to Telegram, it shows as degraded.
 
-### 🌍 Environment Variable Overrides
+One thing to watch with HTTP proxies: TDLib opens `CONNECT` tunnels to Telegram datacenter IPs on port 443, 80, or 5222. Squid, with its default `SSL_ports` ACL, only allows `CONNECT` to 443, and many other proxies do the same. Such a proxy may flip between online and degraded depending on which port TDLib picks. Allow those ports for Telegram's IP ranges, or set `http_only: true` if the proxy can't do `CONNECT` at all.
 
-Environment variables take precedence over YAML values:
+### Environment variables
 
-| Variable | Overrides | Example |
-|----------|-----------|---------|
-| `TDMETER_API_ID` | `tdlib.api_id` | `TDMETER_API_ID=12345` |
-| `TDMETER_API_HASH` | `tdlib.api_hash` | `TDMETER_API_HASH=abc123...` |
-| `TDMETER_AUTH_USERNAME` | `web.auth.username` | `TDMETER_AUTH_USERNAME=admin` |
-| `TDMETER_AUTH_PASSWORD` | `web.auth.password` | `TDMETER_AUTH_PASSWORD=secret` |
+These override the YAML values:
 
-## 🖥️ Web Dashboard
+| Variable | Overrides |
+|----------|-----------|
+| `TDMETER_API_ID` | `tdlib.api_id` |
+| `TDMETER_API_HASH` | `tdlib.api_hash` |
+| `TDMETER_AUTH_USERNAME` | `web.auth.username` |
+| `TDMETER_AUTH_PASSWORD` | `web.auth.password` |
 
-TDMeter ships with a built-in dark-themed web dashboard at the root URL (`/`).
+For example, to keep the dashboard password out of the config file:
 
-<!-- <p align="center"><img src=".github/screenshot.png" alt="TDMeter Dashboard" width="800" /></p> -->
-
-**Dashboard features:**
-- 📊 Summary stats bar — total, online, degraded, offline counts at a glance
-- 🔍 Status filter buttons — quickly filter proxies by status
-- 🔄 Auto-refresh — polls the API on each check interval (toggleable)
-- ⚡ Latency display — shows RTT in milliseconds for online proxies
-- 🔗 Health endpoint links — hover any proxy card to copy its health URL
-- 📱 Responsive design — works on desktop and mobile
-- 🎨 Custom logo support — replace `web/logo.png` and rebuild
-
-## 🩺 Monitoring Integration
-
-### 📡 Uptime Kuma
-
-TDMeter exposes per-proxy health endpoints designed for [Uptime Kuma](https://github.com/louislam/uptime-kuma):
-
-1. In Uptime Kuma, create a new monitor of type **HTTP(s)**
-2. Set the URL to `http://your-tdmeter:2112/health/{proxy-name}`
-3. Set expected status code to **200**
-4. The endpoint returns **200** when the proxy is online and **503** when degraded or offline
-
-**Example:**
-
-```
-http://localhost:2112/health/proxy-eu-1  →  200 {"status":"online","latency_ms":142.5}
-http://localhost:2112/health/proxy-us-1  →  503 {"status":"offline"}
+```bash
+docker run -d \
+  -v $(pwd)/config.yaml:/etc/tdmeter/config.yaml:ro \
+  -e TDMETER_AUTH_USERNAME=admin \
+  -e TDMETER_AUTH_PASSWORD=supersecret \
+  -p 2112:2112 \
+  tdmeter
 ```
 
-> **💡 Tip:** If you enabled Basic Auth, configure the credentials in Uptime Kuma's authentication settings for the monitor.
+## Dashboard
 
-### 📊 Prometheus + Grafana
+The dashboard lives at `/`. It shows counts by status at the top, a card per proxy with its type, address, and latency, and filter buttons for each status. It refreshes on the check interval, and you can turn that off. Hover a card to get a link to its health endpoint.
 
-Scrape the `/metrics` endpoint (always unauthenticated, even when Basic Auth is enabled):
+The logo comes from `web/logo.png` and is embedded into the binary, so replace the file and rebuild to change it.
 
-```yaml
-# prometheus.yml
-scrape_configs:
-  - job_name: 'tdmeter'
-    static_configs:
-      - targets: ['tdmeter:2112']
-```
+## HTTP endpoints
 
-## 🔌 API Endpoints
+| Endpoint | Behind basic auth | Description |
+|----------|-------------------|-------------|
+| `GET /` | if enabled | Dashboard |
+| `GET /api/status` | if enabled | All proxies as JSON |
+| `GET /health/{name}` | if enabled | One proxy: 200 when online, 503 otherwise. The name is case-insensitive |
+| `GET /metrics` | never | Prometheus metrics |
+| `GET /logo.png` | never | Logo |
 
-| Endpoint | Auth | Method | Description |
-|----------|------|--------|-------------|
-| `/` | 🔒 Optional | GET | Web dashboard (HTML) |
-| `/api/status` | 🔒 Optional | GET | All proxy statuses as JSON |
-| `/health/{name}` | 🔒 Optional | GET | Single proxy health (200/503) |
-| `/metrics` | 🔓 Open | GET | Prometheus metrics |
-| `/logo.png` | 🔓 Open | GET | Embedded logo image |
+`/metrics` stays open even with basic auth on, so Prometheus can scrape it without credentials.
 
-> **🔒 Optional** = protected only when `web.auth.username` and `web.auth.password` are configured.
-> **🔓 Open** = always unauthenticated (so Prometheus can scrape without credentials).
-
-### 📄 JSON API Response
-
-`GET /api/status`
+`GET /api/status` returns:
 
 ```json
 {
@@ -333,101 +242,93 @@ scrape_configs:
 }
 ```
 
-## 📊 Prometheus Metrics
+### Uptime Kuma
 
-| Metric | Type | Labels | Description |
-|--------|------|--------|-------------|
-| `tdmeter_proxy_up` | Gauge | `name`, `server`, `port` | `1` if online, `0` otherwise |
-| `tdmeter_proxy_degraded` | Gauge | `name`, `server`, `port` | `1` if degraded, `0` otherwise |
-| `tdmeter_proxy_latency_ms` | Gauge | `name`, `server`, `port` | RTT in milliseconds, `-1` if unreachable |
-| `tdmeter_check_duration_seconds` | Gauge | — | Wall-clock time of entire check round |
-| `tdmeter_proxies_total` | Gauge | `status` | Count of proxies by status (`online`/`degraded`/`offline`) |
+Add an HTTP(s) monitor per proxy that points at `http://your-tdmeter:2112/health/{proxy-name}` and expects status 200:
 
-### 📈 Example Grafana Queries
+```
+/health/proxy-eu-1    200  {"status":"online","latency_ms":142.5}
+/health/socks-office  503  {"status":"offline"}
+```
+
+If basic auth is on, put the credentials in the monitor's authentication settings.
+
+## Prometheus metrics
+
+```yaml
+scrape_configs:
+  - job_name: tdmeter
+    static_configs:
+      - targets: ["tdmeter:2112"]
+```
+
+| Metric | Labels | Description |
+|--------|--------|-------------|
+| `tdmeter_proxy_up` | `name`, `server`, `port` | 1 if online, 0 otherwise |
+| `tdmeter_proxy_degraded` | `name`, `server`, `port` | 1 if degraded, 0 otherwise |
+| `tdmeter_proxy_latency_ms` | `name`, `server`, `port` | Round trip in ms, -1 if not online |
+| `tdmeter_check_duration_seconds` | none | How long the last round took |
+| `tdmeter_proxies_total` | `status` | Number of proxies per status |
+
+All five are gauges. A few queries to start with:
 
 ```promql
-# Proxy availability (1 = up, 0 = down)
+# is this proxy up
 tdmeter_proxy_up{name="proxy-eu-1"}
 
-# Average latency across all online proxies
+# average latency of online proxies
 avg(tdmeter_proxy_latency_ms > 0)
 
-# Count of offline proxies
+# how many proxies are offline
 tdmeter_proxies_total{status="offline"}
-
-# Check round duration
-tdmeter_check_duration_seconds
 ```
 
-## 🐳 Docker Deployment
+## Building from source
 
-### 🔧 Build Image
+You need:
+
+- Go 1.26 or newer
+- TDLib 1.8.46, built from commit `b498497` (the version go-tdlib v1.0.0-beta1 expects). See the [TDLib build instructions](https://tdlib.github.io/td/build.html), or copy the steps from the `Dockerfile`
+- `api_id` and `api_hash` from [my.telegram.org](https://my.telegram.org)
 
 ```bash
-docker build -t tdmeter .
+git clone https://github.com/belaytzev/tdmeter.git
+cd tdmeter
+CGO_ENABLED=1 go build -tags=tdlib -o tdmeter .
+cp config.example.yaml config.yaml
+./tdmeter --config config.yaml
 ```
 
-### ▶️ Run Container
+Without `-tags=tdlib` the binary still builds, but it uses a stub checker and exits on startup. That build is only useful for running tests.
+
+### Tests
 
 ```bash
-docker run -d \
-  -v $(pwd)/config.yaml:/etc/tdmeter/config.yaml:ro \
-  -p 2112:2112 \
-  --name tdmeter \
-  --restart unless-stopped \
-  tdmeter
+go test ./...                          # no TDLib needed
+CGO_ENABLED=1 go test -tags=tdlib ./...  # also runs the TDLib-specific tests, needs TDLib installed
 ```
 
-### 🔐 With Basic Auth via Environment Variables
-
-```bash
-docker run -d \
-  -v $(pwd)/config.yaml:/etc/tdmeter/config.yaml:ro \
-  -e TDMETER_AUTH_USERNAME=admin \
-  -e TDMETER_AUTH_PASSWORD=supersecret \
-  -p 2112:2112 \
-  --name tdmeter \
-  --restart unless-stopped \
-  tdmeter
-```
-
-### 📂 Project Structure
+## Project layout
 
 ```
-tdmeter/
-├── main.go                 # 🚀 Entrypoint, HTTP server, signal handling
-├── config/
-│   └── config.go           # ⚙️ YAML + env var config loading & validation
-├── checker/
-│   ├── checker.go          # 🔍 Status types, Checker interface, DetermineStatus
-│   ├── tcp.go              # 🌐 TCP connectivity checker
-│   └── tdlib.go            # 📡 TDLib proxy checker (build tag: tdlib)
-├── scheduler/
-│   └── scheduler.go        # ⏱️ Periodic check orchestrator with bounded concurrency
-├── metrics/
-│   └── metrics.go          # 📊 Prometheus gauge registration & updates
-├── web/
-│   ├── handler.go          # 🖥️ Dashboard, API, health, and logo handlers
-│   ├── auth.go             # 🔒 Basic auth middleware
-│   ├── store.go            # 💾 Thread-safe status store
-│   ├── embed.go            # 📦 Embedded templates & logo (go:embed)
-│   ├── logo.png            # 🎨 Dashboard logo
-│   └── templates/
-│       └── index.html      # 🖥️ Alpine.js dashboard template
-├── config.example.yaml     # 📝 Example configuration
-├── Dockerfile              # 🐳 Multi-stage build (TDLib + Go + Alpine)
-└── README.md               # 📖 You are here
+main.go                 entrypoint, HTTP server, shutdown
+config/config.go        YAML and env loading, validation
+checker/checker.go      status types, Checker interface
+checker/tcp.go          TCP check
+checker/tdlib.go        TDLib check (build tag: tdlib)
+scheduler/scheduler.go  runs check rounds with bounded concurrency
+metrics/metrics.go      Prometheus gauges
+web/handler.go          dashboard, API, health, and logo handlers
+web/auth.go             basic auth middleware
+web/store.go            latest results, safe for concurrent use
+web/embed.go            embeds the template and logo
+web/templates/index.html  dashboard (Alpine.js)
 ```
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome! If you want to help:
+Pull requests are welcome. CI runs `gofmt`, `go vet` (with and without the `tdlib` tag), and `go test -race` on every PR, then does a full Docker build. Running the first three locally before you push saves a round trip.
 
-1. Fork the repository
-2. Create a branch for your changes
-3. Make and test your changes
-4. Create a Pull Request
-
-## 📄 License
+## License
 
 MIT
