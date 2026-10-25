@@ -80,8 +80,9 @@ RUN CGO_ENABLED=1 go build \
 # Stage 3: Minimal runtime image
 FROM alpine:3.23
 
+# 20261020: drops the compromised eMudhra intermediates; the pin also busts the gha layer cache
 RUN apk add --no-cache \
-    ca-certificates \
+    'ca-certificates>=20261020' \
     libstdc++ \
     openssl \
     zlib
